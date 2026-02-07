@@ -2,7 +2,9 @@
 
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   const pdfParse = require("pdf-parse");
-  const data = await pdfParse(buffer);
+  // Handle both CommonJS default export and named export
+  const parse = pdfParse.default || pdfParse;
+  const data = await parse(buffer);
   return normalizeText(data.text);
 }
 
