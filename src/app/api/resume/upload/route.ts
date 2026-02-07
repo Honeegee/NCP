@@ -218,6 +218,11 @@ export async function POST(request: NextRequest) {
 
 /** Convert "June 2020" or "May 2020 2020" to "2020-06-01" format for PostgreSQL DATE */
 function toDateString(dateStr: string): string | null {
+  // If already in YYYY-MM-DD format, return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+
   const months: Record<string, string> = {
     jan: "01", january: "01", feb: "02", february: "02",
     mar: "03", march: "03", apr: "04", april: "04",

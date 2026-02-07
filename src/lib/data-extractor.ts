@@ -1,5 +1,71 @@
 import type { ParsedResumeData } from "@/types";
 
+// Feature scoring system for resume extraction
+interface ScoredCandidate {
+  text: string;
+  score: number;
+  lineIndex: number;
+}
+
+function scorePositionCandidate(text: string, context: {
+  isBeforeDate: boolean;
+  distanceFromDate: number;
+  hasPositionKeywords: boolean;
+  startsWithCapital: boolean;
+  length: number;
+}): number {
+  let score = 0;
+
+  // Positive scoring
+  if (context.hasPositionKeywords) score += 40; // Strong indicator
+  if (context.isBeforeDate) score += 20; // Positions usually before dates
+  if (context.startsWithCapital) score += 10;
+  if (context.length > 10 && context.length < 60) score += 15; // Good length range
+
+  // Distance scoring (closer to date is better)
+  if (context.distanceFromDate === 1) score += 25;
+  else if (context.distanceFromDate === 2) score += 15;
+  else if (context.distanceFromDate === 3) score += 5;
+
+  // Negative scoring
+  if (text.toLowerCase() === 'unknown') score -= 50;
+  if (text.match(/(?:Inc|LLC|Ltd|Corp|Corporation|Company)/i)) score -= 30; // Likely employer
+  if (text.match(/^[\w\s]+,\s+[\w\s]+$/)) score -= 30; // Likely location
+  if (context.length < 5 || context.length > 80) score -= 20; // Too short/long
+  if (text.match(/^[A-Z][A-Z\s]+$/)) score -= 15; // All caps (might be header)
+
+  return score;
+}
+
+function scoreEmployerCandidate(text: string, context: {
+  isBeforeDate: boolean;
+  distanceFromDate: number;
+  hasCompanyKeywords: boolean;
+  length: number;
+  isKnownHospital: boolean;
+}): number {
+  let score = 0;
+
+  // Positive scoring
+  if (context.isKnownHospital) score += 50; // Very strong indicator
+  if (context.hasCompanyKeywords) score += 35; // Strong indicator
+  if (context.isBeforeDate) score += 20;
+  if (context.length > 5 && context.length < 100) score += 10;
+
+  // Distance scoring
+  if (context.distanceFromDate === 1) score += 20;
+  else if (context.distanceFromDate === 2) score += 10;
+  else if (context.distanceFromDate === 3) score += 5;
+
+  // Negative scoring
+  if (text.toLowerCase() === 'unknown') score -= 50;
+  if (text.match(/^[\w\s]+,\s+[\w\s]+$/)) score -= 30; // Likely location
+  if (text.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Technician|Supervisor)/i)) score -= 25; // Likely position
+  if (context.length < 3 || context.length > 150) score -= 20;
+
+  return score;
+}
+
 // Known hospitals in the Philippines (partial list)
 const KNOWN_HOSPITALS = [
   "St. Luke's Medical Center",
@@ -417,49 +483,62 @@ function extractExperience(
         entry.end_date = `December ${dateMatch[4]}`;
       }
 
-      // Try to find job title and employer from surrounding lines
+      // Use feature scoring to find the best position candidate
       // Look at 3 lines before the date
       const beforeLines = lines.slice(Math.max(0, i - 3), i);
+      const positionCandidates: ScoredCandidate[] = [];
 
-      // Look for position/title (usually 1-2 lines before the date)
-      // Position is typically bold/emphasized text or contains job-related keywords
-      for (let j = beforeLines.length - 1; j >= 0; j--) {
+      // Collect all potential position candidates
+      for (let j = 0; j < beforeLines.length; j++) {
         const candidateLine = beforeLines[j].trim();
-        if (candidateLine &&
-            candidateLine.length > 3 &&
-            candidateLine.length < 120 &&
-            !candidateLine.match(/^[A-Z\s&]{4,}$/) && // not a section header
-            !candidateLine.match(/^[\d\s\-•\*]+$/) && // not just numbers/bullets
-            !candidateLine.toLowerCase().includes('page ') &&
-            !candidateLine.match(/^-+\s*\d+/)) { // not a page number
+        if (!candidateLine || candidateLine.length < 3) continue;
+        if (candidateLine.match(/^[A-Z\s&]{4,}$/)) continue; // section header
+        if (candidateLine.match(/^[\d\s\-•\*]+$/)) continue; // just numbers/bullets
+        if (candidateLine.toLowerCase().includes('page ')) continue;
+        if (candidateLine.match(/^-+\s*\d+/)) continue; // page number
 
-          // Check if line has pipe separator (Position | Location format)
-          if (candidateLine.includes('|')) {
-            const parts = candidateLine.split('|').map(p => p.trim());
+        let textToScore = candidateLine;
+        let extractedLocation = '';
 
-            // Check if first part contains position keywords
-            if (parts[0].match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin)/i)) {
-              entry.position = parts[0];
-              // Extract location if second part looks like a location
-              if (parts[1] && parts[1].length < 80) {
-                entry.location = parts[1];
-              }
-              break;
-            }
-          }
+        // Check if line has pipe separator (Position | Location format)
+        if (candidateLine.includes('|')) {
+          const parts = candidateLine.split('|').map(p => p.trim());
+          textToScore = parts[0];
+          extractedLocation = parts[1] || '';
+        }
 
-          // Skip lines that look like locations (City, Country pattern)
-          if (candidateLine.match(/^[\w\s]+,\s+[\w\s]+(?:,\s+[\w\s]+)?$/)) continue;
+        // Skip obvious locations
+        if (textToScore.match(/^[\w\s]+,\s+[\w\s]+(?:,\s+[\w\s]+)?$/)) continue;
+        // Skip person names
+        if (textToScore.match(/^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[\w\s]+$/) && textToScore.split(/\s+/).length <= 4) continue;
 
-          // Skip lines that are just person names (Mr./Mrs./Ms. X)
-          if (candidateLine.match(/^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[\w\s]+$/) && candidateLine.split(/\s+/).length <= 4) continue;
+        const hasPositionKeywords = textToScore.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin|Sorting|Control|Treatment|Process|Testing)/i) !== null;
 
-          // Common position indicators (without pipe)
-          if (candidateLine.match(/^[A-Z][a-z]/) || // Starts with capital letter
-              candidateLine.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew)/i)) {
-            entry.position = candidateLine;
-            break;
-          }
+        const score = scorePositionCandidate(textToScore, {
+          isBeforeDate: true,
+          distanceFromDate: beforeLines.length - j,
+          hasPositionKeywords,
+          startsWithCapital: /^[A-Z][a-z]/.test(textToScore),
+          length: textToScore.length,
+        });
+
+        positionCandidates.push({
+          text: textToScore,
+          score,
+          lineIndex: j,
+        });
+
+        // Store location if found from pipe
+        if (extractedLocation && extractedLocation.length < 80 && !entry.location) {
+          entry.location = extractedLocation;
+        }
+      }
+
+      // Pick the highest scoring position
+      if (positionCandidates.length > 0) {
+        positionCandidates.sort((a, b) => b.score - a.score);
+        if (positionCandidates[0].score > 0) {
+          entry.position = positionCandidates[0].text;
         }
       }
 
@@ -514,52 +593,64 @@ function extractExperience(
         }
       }
 
-      // Look for employer/company (usually the line right after position or right before date)
-      // Try known hospitals first
-      const context = lines.slice(Math.max(0, i - 3), i + 3).join(" ");
-      for (const hospital of KNOWN_HOSPITALS) {
-        if (context.toLowerCase().includes(hospital.toLowerCase())) {
-          entry.employer = hospital;
-          break;
+      // Use feature scoring to find the best employer candidate
+      const employerCandidates: ScoredCandidate[] = [];
+
+      // Collect all potential employer candidates
+      for (let j = 0; j < beforeLines.length; j++) {
+        const candidateLine = beforeLines[j].trim();
+        if (!candidateLine || candidateLine.length < 3) continue;
+        if (entry.position && candidateLine === entry.position) continue; // Skip if already position
+
+        // Skip if line has pipe with position keywords (already handled as position | location)
+        if (candidateLine.includes('|')) {
+          const parts = candidateLine.split('|').map(p => p.trim());
+          if (parts[0].match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin)/i)) {
+            continue;
+          }
+        }
+
+        if (candidateLine.match(/^[A-Z\s&]{4,}$/)) continue; // section header
+        if (candidateLine.match(/^[\d\s\-•\*]+$/)) continue; // just numbers/bullets
+        if (candidateLine.toLowerCase().includes('page ')) continue;
+
+        const textToScore = candidateLine.split('|')[0].trim();
+
+        // Check if it's a known hospital
+        const isKnownHospital = KNOWN_HOSPITALS.some(h =>
+          textToScore.toLowerCase().includes(h.toLowerCase())
+        );
+
+        const hasCompanyKeywords = textToScore.match(/(?:Inc|LLC|Ltd|Corp|Corporation|Company|Co\.|Group|Technologies|Solutions|Services|Hospital|Medical|University|College|Institute|Agency|Organization|Foundation|Association|Department|Center|Foods|Energy)/i) !== null;
+
+        const score = scoreEmployerCandidate(textToScore, {
+          isBeforeDate: true,
+          distanceFromDate: beforeLines.length - j,
+          hasCompanyKeywords,
+          length: textToScore.length,
+          isKnownHospital,
+        });
+
+        employerCandidates.push({
+          text: textToScore,
+          score,
+          lineIndex: j,
+        });
+
+        // Extract location if line has pipe and we don't have location yet
+        if (candidateLine.includes('|') && !entry.location) {
+          const parts = candidateLine.split('|').map(p => p.trim());
+          if (parts[1] && parts[1].length < 80) {
+            entry.location = parts[1];
+          }
         }
       }
 
-      // If no known hospital, look for any organization/company name
-      if (!entry.employer) {
-        for (let j = beforeLines.length - 1; j >= 0; j--) {
-          const candidateLine = beforeLines[j].trim();
-
-          // Skip if it's already the position
-          if (entry.position && candidateLine === entry.position) continue;
-
-          // Skip if line has pipe with position keywords (already handled as position | location)
-          if (candidateLine.includes('|')) {
-            const parts = candidateLine.split('|').map(p => p.trim());
-            if (parts[0].match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin)/i)) {
-              continue; // This is position | location, skip it
-            }
-          }
-
-          if (candidateLine &&
-              candidateLine.length > 2 &&
-              candidateLine.length < 150 &&
-              !candidateLine.match(/^[A-Z\s&]{4,}$/) && // not a section header
-              !candidateLine.match(/^[\d\s\-•\*]+$/) && // not just numbers/bullets
-              !candidateLine.toLowerCase().includes('page ')) {
-
-            // Look for company indicators
-            if (candidateLine.match(/(?:Inc|LLC|Ltd|Corp|Corporation|Company|Co\.|Group|Technologies|Solutions|Services|Hospital|Medical|University|College|Institute|Agency|Organization|Foundation|Association|Department|Center|Foods)/i) ||
-                candidateLine.match(/^[A-Z][\w\s&,'.-]{2,}(?:[A-Z]|Inc|LLC|Ltd)/) || // Proper noun pattern
-                candidateLine.match(/^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[\w\s]+$/) || // Person names can be employers (clients)
-                (candidateLine.match(/^[A-Z]/) && !candidateLine.match(/^(January|February|March|April|May|June|July|August|September|October|November|December)/i))) {
-
-              // Clean up employer name - remove location info after pipe
-              const cleanedEmployer = candidateLine.split('|')[0].trim();
-
-              entry.employer = cleanedEmployer;
-              break;
-            }
-          }
+      // Pick the highest scoring employer
+      if (employerCandidates.length > 0) {
+        employerCandidates.sort((a, b) => b.score - a.score);
+        if (employerCandidates[0].score > 0) {
+          entry.employer = employerCandidates[0].text;
         }
       }
 

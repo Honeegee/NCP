@@ -629,8 +629,8 @@ export default function ProfilePage() {
 
       {/* Profile Info Section - Overlapping between blue and white */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 -mt-26 relative z-10">
-        <div className="flex items-center gap-6 mb-8">
-          {/* Avatar on the left */}
+        <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 mb-8">
+          {/* Avatar - centered on mobile, left on desktop */}
           <div className="relative group flex-shrink-0">
             {profile.profile_picture_url ? (
               <div className="profile-picture relative" style={{ height: '12rem', width: '12rem' }}>
@@ -644,7 +644,7 @@ export default function ProfilePage() {
                 />
               </div>
             ) : (
-              <div className="profile-picture flex items-center justify-center text-5xl font-bold text-sky-600" style={{ height: '12rem', width: '12rem' }}>
+              <div className="profile-picture flex items-center justify-center text-3xl sm:text-5xl font-bold text-sky-600" style={{ height: '12rem', width: '12rem' }}>
                 {initials}
               </div>
             )}
@@ -682,19 +682,20 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Profile Info on the right - aligned with avatar */}
-          <div className="flex-1 flex items-center">
+          {/* Profile Info - centered on mobile, left-aligned on desktop */}
+          <div className="flex-1 flex items-center w-full">
             <div className="w-full">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
-                  <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                  <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 text-center sm:text-left">
                     {profile.first_name} {profile.last_name}
                   </h2>
-                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-xs sm:text-sm mb-3">
                     {profile.address && (
-                      <span className="text-sm text-gray-600 flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-sky-600" />
-                        <span>{profile.address}</span>
+                      <span className="text-gray-600 flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-600" />
+                        <span className="hidden sm:inline">{profile.address}</span>
+                        <span className="sm:hidden truncate max-w-[150px]">{profile.address}</span>
                       </span>
                     )}
                     {!profile.address && (profile.city || profile.country) && (
@@ -785,7 +786,7 @@ export default function ProfilePage() {
                       className={formErrors.phone ? "border-red-500" : ""}
                     />
                     {formErrors.phone && (
-                      <p className="text-sm text-red-500">{formErrors.phone}</p>
+                      <p className="text-sm text-red-400">{formErrors.phone}</p>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -816,7 +817,7 @@ export default function ProfilePage() {
               ) : (
                 <div>
                   {profile.bio ? (
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
+                    <p className="text-sm leading-relaxed text-gray-700 line-clamp-3 sm:line-clamp-none">
                       {profile.bio}
                     </p>
                   ) : (
@@ -917,79 +918,93 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.experience && profile.experience.length > 0 ? (
-                <div className="space-y-4">
-                  {profile.experience.map((exp, index) => (
-                    <div key={exp.id} className={index !== 0 ? "pt-4 border-t" : ""}>
-                      <div className="experience-item">
-                        <div className="experience-icon">
-                          <Building2 />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-gray-900">{exp.position}</h3>
-                                {exp.department && (
-                                  <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800">
-                                    {exp.department}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-sky-600">{exp.employer}</p>
-                              {exp.location && (
-                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                  <MapPin className="h-3 w-3" />
-                                  {exp.location}
-                                </p>
-                              )}
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center">
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
-                                  <Edit2 className="h-3.5 w-3.5 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteExperience(exp.id)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span>
-                              {formatDate(exp.start_date)} - {exp.end_date ? formatDate(exp.end_date) : "Present"}
-                            </span>
-                          </div>
-                          {exp.description && (
-                            <ul className="mt-3 space-y-1.5 text-sm">
-                              {exp.description.split("\n").map((line, li) => (
-                                <li key={li} className="flex items-start gap-2">
-                                  <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-muted-foreground flex-shrink-0" />
-                                  <span>{line}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                <div>
+                  {profile.experience
+                    .sort((a, b) => {
+                      // Sort by start_date, latest first
+                      const dateA = new Date(a.start_date || '1900-01-01');
+                      const dateB = new Date(b.start_date || '1900-01-01');
+                      return dateB.getTime() - dateA.getTime();
+                    })
+                    .map((exp, index) => (
+                    <div key={exp.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
+                      {/* Icon */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <Building2 className="h-5 w-5 text-gray-500" />
                         </div>
                       </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 text-base mb-1">{exp.position}</h3>
+                        
+                        <div className="flex items-center gap-4 text-sm mb-3">
+                          <span className="text-gray-600 font-medium">{exp.employer}</span>
+                          {exp.location && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                              <span>{exp.location}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-col gap-2 mb-4 text-xs text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                            <span>
+                              {formatDate(exp.start_date)} to {exp.end_date ? formatDate(exp.end_date) : "Present"}
+                            </span>
+                          </div>
+                          {exp.department && (
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-3.5 w-3.5 text-gray-400" />
+                              <span>{exp.department}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {exp.description && (
+                          <ul className="space-y-2 text-sm text-gray-700">
+                            {exp.description.split("\n").map((line, li) => (
+                              <li key={li} className="flex items-start gap-2">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gray-300 flex-shrink-0" />
+                                <span>{line}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+
+                      {/* Actions - Hidden by default, show on hover */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-100 flex items-center justify-center flex-shrink-0 transition-opacity">
+                          <MoreVertical className="h-4 w-4 text-gray-500" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
+                            <Edit2 className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteExperience(exp.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                    <Briefcase className="h-6 w-6 text-muted-foreground" />
+                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <Briefcase className="h-6 w-6 text-gray-400" />
                   </div>
-                  <p className="text-sm font-medium">No experience added</p>
-                  <p className="text-xs text-muted-foreground mt-1">Upload your resume to auto-populate</p>
+                  <p className="text-sm font-medium text-gray-700">No experience added</p>
+                  <p className="text-xs text-gray-500 mt-1">Upload your resume to auto-populate</p>
                 </div>
               )}
             </CardContent>
@@ -1017,88 +1032,87 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.education && profile.education.length > 0 ? (
-                <div className="space-y-6">
+                <div>
                   {profile.education.map((edu, index) => (
-                    <div key={edu.id} className={index !== 0 ? "pt-6 border-t" : ""}>
-                      <div className="flex gap-4">
-                        <div className="flex-shrink-0">
-                          <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
-                            <GraduationCap className="h-6 w-6 text-muted-foreground" />
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1">
-                                  <h3 className="font-semibold">{edu.institution}</h3>
-                                  {edu.institution_location && (
-                                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
-                                      <MapPin className="h-3 w-3" />
-                                      {edu.institution_location}
-                                    </p>
-                                  )}
-                                </div>
-                                {edu.status && (
-                                  <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800 ml-2">
-                                    {edu.status}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-sm text-muted-foreground">{edu.degree}</p>
-                              {edu.field_of_study && (
-                                <p className="text-sm text-sky-600 mt-1">
-                                  {edu.field_of_study}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                                {(edu.start_date || edu.end_date) && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    {edu.start_date && new Date(edu.start_date).getFullYear()}
-                                    {(edu.start_date && edu.end_date) && ' - '}
-                                    {edu.end_date ? new Date(edu.end_date).getFullYear() : edu.start_date && 'Present'}
-                                  </span>
-                                )}
-                                {!edu.start_date && !edu.end_date && edu.graduation_year && (
-                                  <span className="flex items-center gap-1">
-                                    <Calendar className="h-3 w-3" />
-                                    Graduated {edu.graduation_year}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center">
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleOpenEducationModal(edu)}>
-                                  <Edit2 className="h-3.5 w-3.5 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteEducation(edu.id)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                    <div key={edu.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
+                      {/* Icon */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
+                          <GraduationCap className="h-5 w-5 text-gray-500" />
                         </div>
                       </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-900 text-base">{edu.institution}</h3>
+                          </div>
+                          {edu.status && (
+                            <span className="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-700 ml-2 flex-shrink-0">
+                              {edu.status}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 mb-1">{edu.degree}</p>
+                        
+                        {edu.institution_location && (
+                          <p className="text-xs text-gray-600 flex items-center gap-1.5 mb-3">
+                            <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                            <span>{edu.institution_location}</span>
+                          </p>
+                        )}
+
+                        {edu.field_of_study && (
+                          <p className="text-xs text-gray-600 mb-2">{edu.field_of_study}</p>
+                        )}
+
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                          <span>
+                            {(edu.start_date || edu.end_date) ? (
+                              <>
+                                {edu.start_date && new Date(edu.start_date).getFullYear()}
+                                {edu.start_date && ' to '}
+                                {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}
+                              </>
+                            ) : edu.graduation_year ? (
+                              `Graduated ${edu.graduation_year}`
+                            ) : null}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Actions - Hidden by default, show on hover */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-100 flex items-center justify-center flex-shrink-0 transition-opacity">
+                          <MoreVertical className="h-4 w-4 text-gray-500" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenEducationModal(edu)}>
+                            <Edit2 className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteEducation(edu.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                    <GraduationCap className="h-6 w-6 text-muted-foreground" />
+                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
+                    <GraduationCap className="h-6 w-6 text-gray-400" />
                   </div>
-                  <p className="text-sm font-medium">No education added</p>
-                  <p className="text-xs text-muted-foreground mt-1">Upload your resume to auto-populate</p>
+                  <p className="text-sm font-medium text-gray-700">No education added</p>
+                  <p className="text-xs text-gray-500 mt-1">Upload your resume to auto-populate</p>
                 </div>
               )}
             </CardContent>
@@ -1108,8 +1122,8 @@ export default function ProfilePage() {
           <Card className="section-card mt-6">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
               <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon section-icon-purple">
-                  <Sparkles />
+                <div className="section-icon">
+                  <Sparkles className="h-5 w-5 text-gray-500" />
                 </div>
                 Skills
               </CardTitle>
@@ -1249,47 +1263,46 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.certifications && profile.certifications.length > 0 ? (
-                <div className="space-y-3">
-                  {profile.certifications.map((cert) => (
-                    <div key={cert.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group">
-                      <div className="h-10 w-10 rounded bg-card border flex items-center justify-center flex-shrink-0">
-                        <Award className="h-5 w-5 text-warning" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium text-sm truncate">
-                              {cert.cert_type}
-                            </p>
-                            {cert.verified && (
-                              <div className="flex items-center gap-1 mt-1">
-                                <CheckCircle className="h-3 w-3 text-success" />
-                                <span className="text-xs text-success">Verified</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger className="h-6 w-6 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center">
-                                <MoreVertical className="h-3 w-3" />
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleOpenCertificationsModal(cert)}>
-                                  <Edit2 className="h-3 w-3 mr-2" />
-                                  Edit
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDeleteCertification(cert.id)}
-                                  className="text-red-600 focus:text-red-600"
-                                >
-                                  <Trash2 className="h-3 w-3 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                <div>
+                  {profile.certifications.map((cert, index) => (
+                    <div key={cert.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
+                      {/* Icon */}
+                      <div className="flex-shrink-0 mt-1">
+                        <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                          <Award className="h-5 w-5 text-amber-600" />
                         </div>
                       </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-amber-900 text-base mb-1">{cert.cert_type}</h3>
+                        
+                        <div className="flex flex-col gap-2 text-sm text-gray-600">
+                          {cert.verified && (
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                              <span className="text-green-600 font-medium">Verified</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Actions - Hidden by default, show on hover */}
+                      <DropdownMenu>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleOpenCertificationsModal(cert)}>
+                            <Edit2 className="h-3.5 w-3.5 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteCertification(cert.id)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>

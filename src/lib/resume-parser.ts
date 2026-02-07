@@ -11,8 +11,30 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
 /** Extract text from .docx files (Office Open XML / zip-based) */
 export async function extractTextFromDocx(buffer: Buffer): Promise<string> {
   const mammoth = require("mammoth");
-  const result = await mammoth.extractRawText({ buffer });
-  return normalizeText(result.value);
+
+  // Use convertToHtml to preserve structure, then convert to plain text
+  // This better preserves line breaks and paragraph structure
+  const htmlResult = await mammoth.convertToHtml({ buffer });
+
+  // Convert HTML to plain text while preserving line breaks
+  let text = htmlResult.value
+    .replace(/<br\s*\/?>/gi, '\n')           // Convert <br> to newline
+    .replace(/<\/p>/gi, '\n\n')              // Convert </p> to double newline
+    .replace(/<p[^>]*>/gi, '')               // Remove <p> tags
+    .replace(/<\/li>/gi, '\n')               // Convert </li> to newline
+    .replace(/<li[^>]*>/gi, '• ')            // Convert <li> to bullet
+    .replace(/<\/div>/gi, '\n')              // Convert </div> to newline
+    .replace(/<div[^>]*>/gi, '')             // Remove <div> tags
+    .replace(/<\/h[1-6]>/gi, '\n\n')         // Convert heading closes to double newline
+    .replace(/<h[1-6][^>]*>/gi, '')          // Remove heading tags
+    .replace(/<[^>]+>/g, '')                 // Remove all other HTML tags
+    .replace(/&nbsp;/g, ' ')                 // Replace &nbsp; with space
+    .replace(/&amp;/g, '&')                  // Replace &amp; with &
+    .replace(/&lt;/g, '<')                   // Replace &lt; with <
+    .replace(/&gt;/g, '>')                   // Replace &gt; with >
+    .replace(/&quot;/g, '"');                // Replace &quot; with "
+
+  return normalizeText(text);
 }
 
 /** Extract text from .doc files (old binary OLE2 format) */
