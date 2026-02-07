@@ -36,8 +36,8 @@ const strongPasswordSchema = z.string()
     return !commonPatterns.some(pattern => pattern.test(password));
   }, "Password follows a common pattern that is easy to guess");
 
-// Registration Step 2 — Basic Information
-export const stepBasicInfoSchema = z.object({
+// Registration Step 2 — Basic Information (for API validation without confirmPassword)
+export const stepBasicInfoApiSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
@@ -48,6 +48,14 @@ export const stepBasicInfoSchema = z.object({
     .max(20, "Mobile number must not exceed 20 characters")
     .regex(/^[\d\s+()-]+$/, "Mobile number can only contain digits, spaces, +, -, and parentheses"),
   location_type: z.enum(["philippines", "overseas"]),
+});
+
+// Registration Step 2 — Basic Information (for client-side with confirmPassword)
+export const stepBasicInfoSchema = stepBasicInfoApiSchema.extend({
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 // Registration Step 3 — Nurse Credentials (for Registered Nurses)

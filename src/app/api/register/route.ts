@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { createServerSupabase } from "@/lib/supabase";
-import { stepBasicInfoSchema } from "@/lib/validators";
+import { stepBasicInfoApiSchema } from "@/lib/validators";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Validate basic info including password strength
-    const validationResult = stepBasicInfoSchema.safeParse({
+    const validationResult = stepBasicInfoApiSchema.safeParse({
       first_name: body.first_name || '',
       last_name: body.last_name || '',
       email: body.email || '',

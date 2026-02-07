@@ -37,6 +37,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
       last_name: data.last_name || "",
       email: data.email || "",
       password: data.password || "",
+      confirmPassword: "",
       mobile_number: data.mobile_number || "",
       location_type: data.location_type || "philippines",
     },
@@ -114,6 +115,20 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
           />
           {errors.password && (
             <p className="text-sm text-destructive">{errors.password.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="confirmPassword" className="text-foreground/80">Confirm Password <span className="text-rose-500">*</span></Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            placeholder="Re-enter your password"
+            className="h-11 rounded-xl"
+            {...register("confirmPassword")}
+          />
+          {errors.confirmPassword && (
+            <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
           )}
         </div>
 

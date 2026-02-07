@@ -54,7 +54,9 @@ export default function RegisterPage() {
   };
 
   const handleBasicInfoNext = (data: StepBasicInfoData) => {
-    setFormData({ ...formData, ...data });
+    // Exclude confirmPassword from form data (only needed for validation)
+    const { confirmPassword, ...dataWithoutConfirm } = data;
+    setFormData({ ...formData, ...dataWithoutConfirm });
     setCurrentStep(2);
   };
 
