@@ -1,11 +1,9 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  const { PDFParse } = require("pdf-parse");
-  const parser = new PDFParse({ verbosity: 0, data: buffer });
-  await parser.load();
-  const result = await parser.getText();
-  return normalizeText(result.text);
+  const pdfParse = require("pdf-parse");
+  const data = await pdfParse(buffer);
+  return normalizeText(data.text);
 }
 
 /** Extract text from .docx files (Office Open XML / zip-based) */
