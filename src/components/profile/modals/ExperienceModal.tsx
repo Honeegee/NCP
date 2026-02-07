@@ -25,6 +25,7 @@ interface ExperienceModalProps {
     employer: string;
     position: string;
     department: string;
+    location: string;
     start_date: string;
     end_date: string;
     description: string;
@@ -41,6 +42,7 @@ export default function ExperienceModal({
     employer: "",
     position: "",
     department: "",
+    location: "",
     start_date: "",
     end_date: "",
     description: "",
@@ -54,6 +56,7 @@ export default function ExperienceModal({
         employer: experience.employer || "",
         position: experience.position || "",
         department: experience.department || "",
+        location: experience.location || "",
         start_date: experience.start_date || "",
         end_date: experience.end_date || "",
         description: experience.description || "",
@@ -63,6 +66,7 @@ export default function ExperienceModal({
         employer: "",
         position: "",
         department: "",
+        location: "",
         start_date: "",
         end_date: "",
         description: "",
@@ -156,6 +160,15 @@ export default function ExperienceModal({
               value={form.department}
               onChange={(e) => setForm({ ...form, department: e.target.value })}
               placeholder="Emergency, ICU, etc."
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="location">Location (Optional)</Label>
+            <Input
+              id="location"
+              value={form.location}
+              onChange={(e) => setForm({ ...form, location: e.target.value })}
+              placeholder="Manila, Philippines"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">

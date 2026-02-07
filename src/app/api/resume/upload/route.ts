@@ -124,6 +124,9 @@ export async function POST(request: NextRequest) {
       if (parsedData.years_of_experience) {
         profileUpdates.years_of_experience = parsedData.years_of_experience;
       }
+      if (parsedData.address) {
+        profileUpdates.address = parsedData.address;
+      }
 
       if (Object.keys(profileUpdates).length > 0) {
         profileUpdates.updated_at = new Date().toISOString();
@@ -164,6 +167,7 @@ export async function POST(request: NextRequest) {
             position: e.position || "Nurse",
             department: e.department || null,
             description: e.description || null,
+            location: e.location || null,
             start_date: toDateString(e.start_date!),
             end_date: !e.end_date || /present|current/i.test(e.end_date)
               ? null
@@ -183,7 +187,12 @@ export async function POST(request: NextRequest) {
             nurse_id: nurseProfileId,
             institution: e.institution || "Unknown",
             degree: e.degree || "Bachelor of Science in Nursing",
+            field_of_study: e.field_of_study || null,
             graduation_year: e.year || null,
+            institution_location: e.institution_location || null,
+            start_date: e.start_date ? toDateString(e.start_date) : null,
+            end_date: e.end_date ? toDateString(e.end_date) : null,
+            status: e.status || null,
           }));
         if (eduRecords.length > 0) {
           await supabase.from("nurse_education").insert(eduRecords);

@@ -1,0 +1,134 @@
+HONEY GRACE GENOVIA DENOLAN
+Tangub, Bacolod City
+Contact No: +639274554814
+Email address: hdenolan@yahoo.com
+PROFESSIONAL SUMMARY
+Results-driven software developer currently pursuing a degree in Information Technology with hands-on
+experience in mobile and web development. Skilled in designing and implementing applications across
+different platforms, with project experience ranging from social networking apps to educational websites.
+Demonstrates expertise in integrating artificial intelligence through chatbot development and AI-assisted
+coding tools to enhance user engagement and system efficiency. Knowledgeable in DevOps practices,
+including version control and basic CI/CD workflows, ensuring effective collaboration and deployment.
+Strong communicator with multilingual abilities (English, Filipino, Basic Chinese Mandarin), seeking to apply
+technical proficiency and innovative thinking in a dynamic development role.
+EDUCATION
+Bachelor of Science in Information Technology
+Focus on Software Development
+4th Year Student
+Mapua Malayan Digital College
+2022-Present
+Chemical Engineering Technology
+Technological University of the Philippines-Visayas
+Talisay City, Negros Occidental
+2007-2011
+SOFTWARE PROJECT PORTFOLIO (Student Projects)
+• RavionLMS (Capstone Project) – Smart learning management system with notifications and AI
+chatbot. Built with Vue.js, Nuxt.js, TypeScript, TailwindCSS, Django, PostgreSQL, Redis, Node.js,
+Express.js, JWT, and Chart.js. Visit Site
+• BrainBytes (AI Tutoring App, DevOps) – AI tutoring platform with CI/CD deployment, Docker,
+GitHub Workflows, and Grafana dashboards for real-time analytics. Watch Demo
+• RecipeKeeper (Kotlin) – Mobile app to store and organize recipes. Watch Demo
+• MotoRent (JavaScript) – Motorbike rental system with booking management and role-based
+access. Watch Demo
+• Connectly (JavaScript/Python) – Social networking app with custom API for accounts and
+messaging.
+• SocialMediaApp & ChatApp (Kotlin) – Android apps for social networking and real-time chat.
+Watch Demo
+• TravelBlog (HTML/CSS) – Responsive travel blog with interactive content. Visit Site
+
+-- 1 of 4 --
+
+• CoralReefDegradation (HTML/CSS) – Educational site raising awareness of coral reef decline.
+Visit Site
+• DigitalPinoy Museum (HTML/CSS/JavaScript) – Online Museum showcasing Filipino history and
+culture with interactive exhibits. Visit Site
+• AAPL Stock Dashboard (Tableau, Data Visualization) – Interactive Apple stock dashboard (2014–
+2022) showing price trends, moving averages, and major events. View Dashboard
+• AOOP & OOP-MOTORPH Payroll System (Java) – Payroll applications with class-based design and
+role-based access. Watch Demo
+PROFESSIONAL EXPERIENCE
+Global Link Center | Mandaluyong City
+Admin-Translator-Coordinator
+March 2023 – October 2023
+• Facilitated cross-cultural communication through translation and clarification of technical and
+operational instructions.
+• Coordinated administrative operations and managed digital and physical office documentation
+with attention to detail.
+• Optimized team communication processes across multilingual teams to improve workflow
+efficiency.
+• Assisted in the hiring and onboarding process, including organizing candidate documentation and
+scheduling, supporting team development and resource management.
+Personal Chinese Translator/Admin | Davao City
+Mr. Hui Xu
+September 2022 – March 2023
+• Conducted comprehensive market research and handled administrative duties
+• Organized meetings and provided interpretation services for clients
+• Translated technical instructions for Filipino workers, enhancing operational efficiency
+Garmin Corporation | Taoyuan, Taiwan
+SMT Technician
+July 2019 - July 2022
+• Operated and maintained high-speed electronic manufacturing equipment, including NXT
+placement machines and PCB processing tools, ensuring accurate and efficient production.
+• Conducted precision hand soldering and component preparation, emphasizing accuracy and
+adherence to strict technical standards.
+• Performed quality control and inspections, identifying and resolving issues early in the production
+process.
+• Facilitated cross-language technical communication by translating instructions for Filipino
+coworkers, improving team efficiency.
+• Developed a problem-solving mindset by troubleshooting equipment and optimizing workflows,
+transferable to software debugging and systems analysis.
+
+-- 2 of 4 --
+
+Inventec Solar Energy Corporation | Taoyuan, Taiwan
+Testing and Sorting Technician
+2016 - 2018
+• Operated and maintained testing equipment for photovoltaic cells, ensuring precise measurement
+and compliance with specifications.
+• Conducted visual inspections and quality assessments, demonstrating strong attention to detail
+and systematic verification.
+• Managed data recording and documentation of test results, supporting traceability and process
+improvement.
+• Coordinated packaging processes according to technical guidelines, reflecting strong process
+management skills applicable to software project workflows.
+Asian Alcohol Corporation | Pulupandan, Negros Occidental
+Process Control Analyst
+2015 - 2016
+• Conducted sampling and analyses of various industrial waters and treatment systems
+• Performed laboratory analyses for water and wastewater treatment
+• Managed inventory of chemicals and laboratory apparatus
+• Prepared and submitted detailed daily and monthly technical reports
+Roxol Bioenergy Corporation | La Carlota, Negros Occidental
+Water Treatment Supervisor (Trans World Trading Co., Inc)
+2014 - 2015
+• Conducted chemical and microbial water analyses for industrial systems
+• Calculated and recommended chemical dosing protocols based on analytical results
+• Supervised maintenance of boiler and cooling tower systems
+• Prepared comprehensive technical reports for management
+Laboratory Analyst (Jefcor Laboratories Incorporated)
+2012 - 2014
+• Analyzed ethanol products, industrial waters, and waste products
+• Ensured compliance with quality and safety standards
+• Documented and reported analytical findings to management
+ENTREPRENEURIAL EXPERIENCE
+Owner – Internet Café and Printing Shop
+Bacolod City, Philippines | 2022 – Present
+• Managed computer systems, printers, and network operations
+• Provided technical support and software troubleshooting for clients
+• Gained experience in IT management, problem-solving, and customer service
+ADDITIONAL EXPERIENCE
+• Petron Testing Center - OJT/Student Trainee (2011)
+• Jollibee Foods Corp - Service Crew (2010)
+• URC-Sonedco - OJT/Student Trainee (2008)
+
+-- 3 of 4 --
+
+PERSONAL INFORMATION:
+Height: 5’3’’
+Weight: 45kg
+Sex: Female
+Marital Status: Single
+Nationality: Filipino
+Birthdate: April 17, 1989
+
+-- 4 of 4 --

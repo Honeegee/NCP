@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
 
-export async function POST(request: NextRequest) {
+export async function DELETE() {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -22,28 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const body = await request.json();
-
-    const { data, error } = await supabase
-      .from("nurse_experience")
-      .insert({
-        nurse_id: profile.id,
-        employer: body.employer || "Unknown",
-        position: body.position || "Nurse",
-        department: body.department || null,
-        location: body.location || null,
-        description: body.description || null,
-        start_date: body.start_date,
-        end_date: body.end_date || null,
-      })
-      .select()
-      .single();
+    const { error } = await supabase
+      .from("nurse_certifications")
+      .delete()
+      .eq("nurse_id", profile.id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json({ success: true, message: "All certifications deleted" });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

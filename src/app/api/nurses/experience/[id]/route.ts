@@ -37,6 +37,7 @@ export async function PUT(
         employer: body.employer,
         position: body.position,
         department: body.department || null,
+        location: body.location || null,
         description: body.description || null,
         start_date: body.start_date,
         end_date: body.end_date || null,

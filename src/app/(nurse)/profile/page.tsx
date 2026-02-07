@@ -510,6 +510,71 @@ export default function ProfilePage() {
     }
   };
 
+  // Clear all functions
+  const handleClearAllExperience = async () => {
+    if (!confirm("Delete ALL experience entries? This action cannot be undone.")) return;
+    try {
+      const res = await fetch("/api/nurses/experience/clear", { method: "DELETE" });
+      if (res.ok) {
+        toast.success("All experience entries deleted!");
+        fetchProfile();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to clear experience");
+      }
+    } catch {
+      toast.error("Failed to clear experience");
+    }
+  };
+
+  const handleClearAllEducation = async () => {
+    if (!confirm("Delete ALL education entries? This action cannot be undone.")) return;
+    try {
+      const res = await fetch("/api/nurses/education/clear", { method: "DELETE" });
+      if (res.ok) {
+        toast.success("All education entries deleted!");
+        fetchProfile();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to clear education");
+      }
+    } catch {
+      toast.error("Failed to clear education");
+    }
+  };
+
+  const handleClearAllSkills = async () => {
+    if (!confirm("Delete ALL skills? This action cannot be undone.")) return;
+    try {
+      const res = await fetch("/api/nurses/skills/clear", { method: "DELETE" });
+      if (res.ok) {
+        toast.success("All skills deleted!");
+        fetchProfile();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to clear skills");
+      }
+    } catch {
+      toast.error("Failed to clear skills");
+    }
+  };
+
+  const handleClearAllCertifications = async () => {
+    if (!confirm("Delete ALL certifications? This action cannot be undone.")) return;
+    try {
+      const res = await fetch("/api/nurses/certifications/clear", { method: "DELETE" });
+      if (res.ok) {
+        toast.success("All certifications deleted!");
+        fetchProfile();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Failed to clear certifications");
+      }
+    } catch {
+      toast.error("Failed to clear certifications");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -626,7 +691,13 @@ export default function ProfilePage() {
                     {profile.first_name} {profile.last_name}
                   </h2>
                   <div className="flex flex-wrap items-center gap-3 mb-3">
-                    {(profile.city || profile.country) && (
+                    {profile.address && (
+                      <span className="text-sm text-gray-600 flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-sky-600" />
+                        <span>{profile.address}</span>
+                      </span>
+                    )}
+                    {!profile.address && (profile.city || profile.country) && (
                       <span className="text-sm text-gray-600 flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-sky-600" />
                         <span>{profile.city}{profile.city && profile.country ? ', ' : ''}{profile.country}</span>
@@ -833,9 +904,16 @@ export default function ProfilePage() {
                 </div>
                 Experience
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => handleOpenExperienceModal()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {profile.experience && profile.experience.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAllExperience} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => handleOpenExperienceModal()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               {profile.experience && profile.experience.length > 0 ? (
@@ -858,6 +936,12 @@ export default function ProfilePage() {
                                 )}
                               </div>
                               <p className="text-sm text-sky-600">{exp.employer}</p>
+                              {exp.location && (
+                                <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="h-3 w-3" />
+                                  {exp.location}
+                                </p>
+                              )}
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center">
@@ -920,9 +1004,16 @@ export default function ProfilePage() {
                 </div>
                 Education
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => handleOpenEducationModal()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {profile.education && profile.education.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAllEducation} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => handleOpenEducationModal()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               {profile.education && profile.education.length > 0 ? (
@@ -937,14 +1028,45 @@ export default function ProfilePage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold">{edu.institution}</h3>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold">{edu.institution}</h3>
+                                  {edu.institution_location && (
+                                    <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                      <MapPin className="h-3 w-3" />
+                                      {edu.institution_location}
+                                    </p>
+                                  )}
+                                </div>
+                                {edu.status && (
+                                  <span className="inline-flex items-center rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-medium text-sky-800 ml-2">
+                                    {edu.status}
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-sm text-muted-foreground">{edu.degree}</p>
-                              {edu.graduation_year && (
-                                <p className="text-sm text-muted-foreground mt-1">
-                                  Graduated {edu.graduation_year}
+                              {edu.field_of_study && (
+                                <p className="text-sm text-sky-600 mt-1">
+                                  {edu.field_of_study}
                                 </p>
                               )}
+                              <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                                {(edu.start_date || edu.end_date) && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {edu.start_date && new Date(edu.start_date).getFullYear()}
+                                    {(edu.start_date && edu.end_date) && ' - '}
+                                    {edu.end_date ? new Date(edu.end_date).getFullYear() : edu.start_date && 'Present'}
+                                  </span>
+                                )}
+                                {!edu.start_date && !edu.end_date && edu.graduation_year && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    Graduated {edu.graduation_year}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <DropdownMenu>
                               <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md hover:bg-gray-100 flex items-center justify-center">
@@ -991,9 +1113,16 @@ export default function ProfilePage() {
                 </div>
                 Skills
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => handleOpenSkillsModal()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {profile.skills && profile.skills.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAllSkills} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => handleOpenSkillsModal()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               {profile.skills && profile.skills.length > 0 ? (
@@ -1107,9 +1236,16 @@ export default function ProfilePage() {
                 </div>
                 Certifications
               </CardTitle>
-              <Button variant="ghost" size="sm" onClick={() => handleOpenCertificationsModal()}>
-                <Plus className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {profile.certifications && profile.certifications.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={handleClearAllCertifications} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="sm" onClick={() => handleOpenCertificationsModal()}>
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="p-6">
               {profile.certifications && profile.certifications.length > 0 ? (

@@ -34,6 +34,7 @@ export interface NurseExperience {
   start_date: string;
   end_date: string | null;
   description: string | null;
+  location: string | null;
 }
 
 export interface NurseCertification {
@@ -54,6 +55,10 @@ export interface NurseEducation {
   degree: string;
   field_of_study: string | null;
   graduation_year: number | null;
+  institution_location: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  status: string | null;
 }
 
 export interface NurseSkill {
@@ -89,8 +94,14 @@ export interface ParsedResumeData {
   education?: {
     institution?: string;
     degree?: string;
+    field_of_study?: string;
     year?: number;
+    institution_location?: string;
+    start_date?: string;
+    end_date?: string;
+    status?: string;
   }[];
+  address?: string;
   experience?: {
     employer?: string;
     position?: string;
@@ -98,6 +109,7 @@ export interface ParsedResumeData {
     end_date?: string;
     department?: string;
     description?: string;
+    location?: string;
   }[];
 }
 

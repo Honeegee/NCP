@@ -98,6 +98,7 @@ export const experienceItemSchema = z.object({
   employer: z.string().min(1, "Employer name is required"),
   position: z.string().min(1, "Position is required"),
   department: z.string().optional().default(""),
+  location: z.string().optional().default(""),
   start_date: z.string().min(1, "Start date is required"),
   end_date: z.string().optional().default(""),
   description: z.string().optional().default(""),
