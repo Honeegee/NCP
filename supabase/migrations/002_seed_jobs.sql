@@ -1,0 +1,87 @@
+-- Seed sample job listings for testing
+INSERT INTO jobs (title, description, location, facility_name, employment_type, min_experience_years, required_certifications, required_skills, salary_min, salary_max, salary_currency, is_active)
+VALUES
+  (
+    'Staff Nurse - Medical Ward',
+    'We are looking for a dedicated Staff Nurse for our Medical Ward. Responsibilities include patient assessment, medication administration, and care plan development.',
+    'Manila, Philippines',
+    'St. Luke''s Medical Center',
+    'full-time',
+    2,
+    ARRAY['PRC License'],
+    ARRAY['Patient Assessment', 'IV Therapy', 'Medication Administration', 'Vital Signs Monitoring'],
+    35000,
+    45000,
+    'PHP',
+    true
+  ),
+  (
+    'ICU Nurse',
+    'Seeking experienced ICU nurses for our critical care unit. Must be able to handle ventilator management, hemodynamic monitoring, and emergency response.',
+    'Quezon City, Philippines',
+    'Philippine Heart Center',
+    'full-time',
+    3,
+    ARRAY['PRC License', 'NCLEX'],
+    ARRAY['Critical Care', 'Ventilator Management', 'Hemodynamic Monitoring', 'Emergency Response'],
+    45000,
+    60000,
+    'PHP',
+    true
+  ),
+  (
+    'Registered Nurse - International',
+    'International staffing opportunity in Saudi Arabia. Competitive salary package with housing and transportation allowance.',
+    'Riyadh, Saudi Arabia',
+    'King Faisal Specialist Hospital',
+    'contract',
+    3,
+    ARRAY['PRC License', 'NCLEX', 'IELTS'],
+    ARRAY['Patient Care', 'Medication Administration', 'Documentation', 'Infection Control'],
+    5000,
+    7000,
+    'USD',
+    true
+  ),
+  (
+    'Operating Room Nurse',
+    'Join our surgical team as an OR nurse. Experience in perioperative nursing required.',
+    'Cebu City, Philippines',
+    'Cebu Doctors'' University Hospital',
+    'full-time',
+    2,
+    ARRAY['PRC License'],
+    ARRAY['Perioperative Nursing', 'Surgical Instrumentation', 'Sterile Technique', 'Patient Assessment'],
+    38000,
+    50000,
+    'PHP',
+    true
+  ),
+  (
+    'Nurse - Home Health Care',
+    'Part-time home health care nurse needed for elderly patient care. Flexible schedule.',
+    'Makati, Philippines',
+    'MedCare Home Health Services',
+    'part-time',
+    1,
+    ARRAY['PRC License'],
+    ARRAY['Geriatric Care', 'Wound Care', 'Vital Signs Monitoring', 'Patient Education'],
+    20000,
+    28000,
+    'PHP',
+    true
+  ),
+  (
+    'Registered Nurse - UK',
+    'NHS hospital seeking Filipino nurses with IELTS band 7+. Full relocation package included.',
+    'London, United Kingdom',
+    'Royal London Hospital',
+    'full-time',
+    2,
+    ARRAY['PRC License', 'IELTS', 'NCLEX'],
+    ARRAY['Patient Assessment', 'Medication Administration', 'Care Planning', 'Clinical Documentation'],
+    2800,
+    3500,
+    'GBP',
+    true
+  );
