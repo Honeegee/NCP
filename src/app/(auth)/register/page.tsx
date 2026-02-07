@@ -76,6 +76,8 @@ export default function RegisterPage() {
       const first_name = formData.first_name || "";
       const last_name = formData.last_name || "";
 
+      console.log("[Register] Creating account for:", formData.email);
+
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -100,10 +102,13 @@ export default function RegisterPage() {
       const result = await response.json();
 
       if (!response.ok) {
+        console.error("[Register] Registration failed:", result.error);
         toast.error(result.error || "Registration failed");
         setLoading(false);
         return;
       }
+
+      console.log("[Register] Account created, signing in...");
 
       // Sign in first so we have an auth token for the resume upload
       const signInResult = await signIn("credentials", {
@@ -112,7 +117,11 @@ export default function RegisterPage() {
         redirect: false,
       });
 
+      console.log("[Register] Sign-in result:", signInResult?.ok ? "success" : "failed", signInResult?.error);
+
       if (signInResult?.ok) {
+        console.log("[Register] Sign-in successful, uploading resume if needed...");
+        
         // Upload resume after sign-in (now authenticated)
         if (formData.resume_file) {
           try {
@@ -129,13 +138,26 @@ export default function RegisterPage() {
           }
         }
 
+        console.log("[Register] Redirecting to dashboard...");
         router.push("/dashboard");
         router.refresh();
+      } else if (signInResult?.error) {
+        console.error("[Register] Sign-in error:", signInResult.error);
+        toast.error(`Sign-in failed: ${signInResult.error}. Please try logging in manually.`);
+        setLoading(false);
+        // Redirect to login after a brief delay
+        setTimeout(() => router.push("/login"), 2000);
       } else {
-        router.push("/login");
+        console.warn("[Register] Sign-in failed with unknown error");
+        toast.error("Account created but auto-login failed. Please log in manually.");
+        setLoading(false);
+        // Redirect to login after a brief delay
+        setTimeout(() => router.push("/login"), 2000);
       }
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+    } catch (err) {
+      console.error("[Register] Catch error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      toast.error(errorMessage);
       setLoading(false);
     }
   };
