@@ -45,7 +45,7 @@ If users are getting `401 (Unauthorized)` on `/api/nurses/me` after signup or if
 2. **NEXTAUTH_URL mismatch** — Must match your deployed domain exactly
 3. **Environment variables not redeployed** — Always redeploy after adding/changing env vars
 
-**How to get these values:**
+**How to get these valueszfdf:**
 
 - **Supabase URL & Keys**: Go to your Supabase project → Settings → API
 - **NEXTAUTH_SECRET**: Generate a secure random string:
