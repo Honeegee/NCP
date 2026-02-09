@@ -92,8 +92,14 @@ export default function ProfileEditModal({
     setSaving(true);
     try {
       await onSave({
-        ...validation.data,
+        first_name: validation.data.first_name || "",
+        last_name: validation.data.last_name || "",
+        phone: validation.data.phone || "",
+        address: validation.data.address || "",
+        city: validation.data.city || "",
+        country: validation.data.country || "",
         graduation_year: validation.data.graduation_year ?? null,
+        bio: validation.data.bio || "",
         professional_status: (validation.data.professional_status as "registered_nurse" | "nursing_student" | null) ?? null,
       });
     } finally {
