@@ -134,7 +134,7 @@ export default function AdminDashboard() {
   const recentNurses = nurses.slice(0, 10);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold">Admin Dashboard</h1>
@@ -144,64 +144,58 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="stats-icon-blue">
+                <Users />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total Nurses</p>
-                <p className="text-2xl font-bold">{totalNurses}</p>
+                <p className="text-2xl font-bold text-gray-800">{totalNurses}</p>
+                <p className="text-sm text-gray-600">Total Nurses</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <UserPlus className="h-5 w-5 text-green-600" />
+              <div className="stats-icon-green">
+                <UserPlus />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Recent Registrations
-                </p>
-                <p className="text-2xl font-bold">{recentRegistrations}</p>
-                <p className="text-xs text-muted-foreground">Last 7 days</p>
+                <p className="text-2xl font-bold text-gray-800">{recentRegistrations}</p>
+                <p className="text-sm text-gray-600">New (7 days)</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Briefcase className="h-5 w-5 text-blue-600" />
+              <div className="stats-icon-blue">
+                <Briefcase />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Active Jobs</p>
-                <p className="text-2xl font-bold">{activeJobs}</p>
+                <p className="text-2xl font-bold text-gray-800">{activeJobs}</p>
+                <p className="text-sm text-gray-600">Active Jobs</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <ClipboardCheck className="h-5 w-5 text-amber-600" />
+              <div className="stats-icon-orange">
+                <ClipboardCheck />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Pending Reviews</p>
-                <p className="text-2xl font-bold">{pendingReviews}</p>
-                <p className="text-xs text-muted-foreground">
-                  Incomplete profiles
-                </p>
+                <p className="text-2xl font-bold text-gray-800">{pendingReviews}</p>
+                <p className="text-sm text-gray-600">Pending</p>
               </div>
             </div>
           </CardContent>
@@ -209,18 +203,18 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Registrations */}
-      <Card>
-        <CardHeader>
+      <Card className="section-card">
+        <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 rounded-t-lg overflow-hidden">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Recent Registrations</CardTitle>
-              <CardDescription>
-                Latest nurse profiles on the platform
-              </CardDescription>
-            </div>
+            <CardTitle className="flex items-center gap-3 text-lg">
+              <div className="section-icon">
+                <Users />
+              </div>
+              Recent Registrations
+            </CardTitle>
             <Link href="/admin/nurses">
               <Button variant="outline" size="sm">
-                View All Nurses
+                View All
                 <ArrowRight className="h-4 w-4 ml-1" />
               </Button>
             </Link>
@@ -286,7 +280,7 @@ export default function AdminDashboard() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
+        <Card className="section-card">
           <CardHeader>
             <CardTitle className="text-lg">Nurse Management</CardTitle>
             <CardDescription>
@@ -303,7 +297,7 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="section-card">
           <CardHeader>
             <CardTitle className="text-lg">Job Management</CardTitle>
             <CardDescription>

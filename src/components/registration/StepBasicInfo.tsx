@@ -70,6 +70,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
               id="first_name"
               placeholder="Maria"
               className="h-11 rounded-xl"
+              autoComplete="given-name"
               {...register("first_name")}
             />
             {errors.first_name && (
@@ -82,6 +83,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
               id="last_name"
               placeholder="Santos"
               className="h-11 rounded-xl"
+              autoComplete="family-name"
               {...register("last_name")}
             />
             {errors.last_name && (
@@ -97,6 +99,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
             type="email"
             placeholder="maria.santos@email.com"
             className="h-11 rounded-xl"
+            autoComplete="email"
             {...register("email")}
           />
           {errors.email && (
@@ -111,6 +114,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
             type="password"
             placeholder="Minimum 8 characters"
             className="h-11 rounded-xl"
+            autoComplete="new-password"
             {...register("password")}
           />
           {errors.password && (
@@ -125,6 +129,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
             type="password"
             placeholder="Re-enter your password"
             className="h-11 rounded-xl"
+            autoComplete="new-password"
             {...register("confirmPassword")}
           />
           {errors.confirmPassword && (
@@ -138,6 +143,7 @@ export function StepBasicInfo({ data, onNext, onBack }: StepBasicInfoProps) {
             id="mobile_number"
             placeholder="+63 912 345 6789"
             className="h-11 rounded-xl"
+            autoComplete="tel"
             {...register("mobile_number")}
           />
           {errors.mobile_number && (

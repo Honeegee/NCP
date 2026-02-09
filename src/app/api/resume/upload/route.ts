@@ -83,6 +83,23 @@ export async function POST(request: NextRequest) {
       parsedData = extractResumeData(extractedText);
     }
 
+    // Delete existing resumes (replace old with new)
+    const { data: existingResumes } = await supabase
+      .from("resumes")
+      .select("id, file_path")
+      .eq("nurse_id", nurseProfileId);
+
+    if (existingResumes && existingResumes.length > 0) {
+      const filePaths = existingResumes.map((r) => r.file_path).filter(Boolean);
+      if (filePaths.length > 0) {
+        await supabase.storage.from("resumes").remove(filePaths);
+      }
+      await supabase
+        .from("resumes")
+        .delete()
+        .eq("nurse_id", nurseProfileId);
+    }
+
     // Save resume record in database
     const { data: resume, error: dbError } = await supabase
       .from("resumes")
@@ -107,26 +124,25 @@ export async function POST(request: NextRequest) {
 
     // Auto-populate profile fields from parsed data
     if (parsedData) {
-      // Clear old extracted data before inserting new (prevent duplicates on re-upload)
+      // Always clear and re-insert structured data (experience, skills, etc.)
       await supabase.from("nurse_certifications").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_skills").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_experience").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_education").delete().eq("nurse_id", nurseProfileId);
 
-      const profileUpdates: Record<string, unknown> = {};
+      // Fetch current profile to avoid overwriting manually-entered data
+      const { data: currentProfile } = await supabase
+        .from("nurse_profiles")
+        .select("bio, graduation_year, years_of_experience, address")
+        .eq("id", nurseProfileId)
+        .single();
 
-      if (parsedData.summary) {
-        profileUpdates.bio = parsedData.summary;
-      }
-      if (parsedData.graduation_year) {
-        profileUpdates.graduation_year = parsedData.graduation_year;
-      }
-      if (parsedData.years_of_experience) {
-        profileUpdates.years_of_experience = parsedData.years_of_experience;
-      }
-      if (parsedData.address) {
-        profileUpdates.address = parsedData.address;
-      }
+      // Only fill fields that are currently empty (resume = quick-fill, forms = source of truth)
+      const profileUpdates: Record<string, unknown> = {};
+      if (!currentProfile?.bio && parsedData.summary) profileUpdates.bio = parsedData.summary;
+      if (!currentProfile?.graduation_year && parsedData.graduation_year) profileUpdates.graduation_year = parsedData.graduation_year;
+      if (!currentProfile?.years_of_experience && parsedData.years_of_experience) profileUpdates.years_of_experience = parsedData.years_of_experience;
+      if (!currentProfile?.address && parsedData.address) profileUpdates.address = parsedData.address;
 
       if (Object.keys(profileUpdates).length > 0) {
         profileUpdates.updated_at = new Date().toISOString();

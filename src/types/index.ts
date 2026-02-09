@@ -23,6 +23,12 @@ export interface NurseProfile {
   profile_picture_url: string | null;
   profile_complete: boolean;
   updated_at: string;
+  professional_status: "registered_nurse" | "nursing_student" | null;
+  location_type: "philippines" | "overseas" | null;
+  employment_status: string | null;
+  specialization: string | null;
+  school_name: string | null;
+  internship_experience: string | null;
 }
 
 export interface NurseExperience {

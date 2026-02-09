@@ -17,6 +17,7 @@ import {
   CheckCircle,
   ChevronDown,
 } from "lucide-react";
+import Link from "next/link";
 import type { JobMatch } from "@/types";
 
 export default function JobsPage() {
@@ -93,7 +94,7 @@ export default function JobsPage() {
   const highMatches = matches.filter((m) => m.match_score >= 70).length;
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in mb-12">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
@@ -211,8 +212,8 @@ export default function JobsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map((match) => (
+            <Link key={match.job.id} href={`/jobs/${match.job.id}`}>
             <Card
-              key={match.job.id}
               className="border-0 shadow-sm hover-lift group cursor-pointer"
             >
               <CardContent className="py-5">
@@ -363,6 +364,7 @@ export default function JobsPage() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
           ))}
         </div>
       )}

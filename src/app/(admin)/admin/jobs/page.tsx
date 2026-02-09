@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -33,6 +32,8 @@ import {
   Power,
   PowerOff,
   Save,
+  CheckCircle,
+  MinusCircle,
 } from "lucide-react";
 import type { Job, EmploymentType } from "@/types";
 
@@ -254,8 +255,12 @@ export default function AdminJobManagement() {
     }
   };
 
+  const totalJobs = jobs.length;
+  const activeJobs = jobs.filter((j) => j.is_active).length;
+  const inactiveJobs = jobs.filter((j) => !j.is_active).length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12">
       {/* Page Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -298,21 +303,60 @@ export default function AdminJobManagement() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="stats-icon-blue">
+                <Briefcase />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{totalJobs}</p>
+                <p className="text-sm text-gray-600">Total Jobs</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="stats-icon-green">
+                <CheckCircle />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{activeJobs}</p>
+                <p className="text-sm text-gray-600">Active</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="stats-card">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex items-center gap-3">
+              <div className="stats-icon-orange">
+                <MinusCircle />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-800">{inactiveJobs}</p>
+                <p className="text-sm text-gray-600">Inactive</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Job Creation / Edit Form */}
       {showForm && (
-        <Card>
-          <CardHeader>
+        <Card className="section-card">
+          <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 rounded-t-lg overflow-hidden">
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">
-                  {editingJobId ? "Edit Job" : "Create New Job"}
-                </CardTitle>
-                <CardDescription>
-                  {editingJobId
-                    ? "Update the job posting details"
-                    : "Fill in the details for a new job posting"}
-                </CardDescription>
-              </div>
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <div className="section-icon">
+                  <Briefcase />
+                </div>
+                {editingJobId ? "Edit Job" : "Create New Job"}
+              </CardTitle>
               <Button variant="ghost" size="icon" onClick={resetForm}>
                 <X className="h-4 w-4" />
               </Button>
@@ -547,19 +591,19 @@ export default function AdminJobManagement() {
       )}
 
       {/* Jobs Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Briefcase className="h-4 w-4" />
-              Job Postings
-              {!loading && (
-                <Badge variant="secondary" className="ml-2">
-                  {jobs.length} job{jobs.length !== 1 ? "s" : ""}
-                </Badge>
-              )}
-            </CardTitle>
-          </div>
+      <Card className="section-card">
+        <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 rounded-t-lg overflow-hidden">
+          <CardTitle className="flex items-center gap-3 text-lg">
+            <div className="section-icon">
+              <Briefcase />
+            </div>
+            Job Postings
+            {!loading && (
+              <Badge variant="secondary" className="ml-1">
+                {jobs.length}
+              </Badge>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {loading ? (

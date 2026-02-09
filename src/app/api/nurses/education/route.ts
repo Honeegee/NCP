@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         institution: body.institution || "Unknown",
         degree: body.degree || "Bachelor of Science in Nursing",
         field_of_study: body.field_of_study || null,
-        graduation_year: body.graduation_year || null,
+        graduation_year: body.graduation_year === "Present" || body.graduation_year === "" ? null : (body.graduation_year || null),
       })
       .select()
       .single();

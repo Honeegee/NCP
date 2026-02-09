@@ -60,22 +60,19 @@ export default function NurseDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center space-y-4">
+        <div className="text-center space-y-3">
           <div className="relative mx-auto h-12 w-12">
-            <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+            <div className="absolute inset-0 rounded-full border-4 border-muted" />
             <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
           </div>
-          <div>
-            <p className="font-medium text-foreground">Loading your dashboard</p>
-            <p className="text-sm text-muted-foreground">Please wait...</p>
-          </div>
+          <p className="text-sm text-muted-foreground">Loading dashboard...</p>
         </div>
       </div>
     );
   }
 
   const profileCompleteness = calculateCompleteness(profile);
-  const topMatches = matches.slice(0, 3);
+  const topMatches = matches.slice(0, 5);
 
   return (
     <div>
@@ -170,7 +167,7 @@ export default function NurseDashboard() {
       </div>
 
       {/* Stats Cards - Overlapping Header (Same as Profile) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-5 lg:px-6 -mt-12 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 -mt-12 relative z-10">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="stats-card">
              <CardContent className="p-4 sm:p-5">
@@ -232,8 +229,8 @@ export default function NurseDashboard() {
 
       {/* Enhanced Profile Completeness Alert */}
       {profileCompleteness < 100 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-8">
-          <Card className="border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent shadow-sm">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 mb-8">
+          <Card className="section-card border border-primary/30 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
             <CardContent className="py-7 px-6">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
                 <div className="h-16 w-16 rounded-2xl gradient-primary flex items-center justify-center flex-shrink-0 shadow-lg">
@@ -265,12 +262,12 @@ export default function NurseDashboard() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-16">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-16">
         {/* Enhanced Job Matches Section */}
         <div className="lg:col-span-2 space-y-4">
            <Card className="section-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
                 <div className="section-icon-purple">
                   <Target />
                 </div>
@@ -305,8 +302,8 @@ export default function NurseDashboard() {
               ) : (
                  <div className="space-y-3">
                    {topMatches.map((match) => (
+                    <Link key={match.job.id} href={`/jobs/${match.job.id}`}>
                     <div
-                      key={match.job.id}
                        className="relative group border rounded-2xl p-4 sm:p-5 hover:border-primary/30 hover:bg-primary/[0.02] transition-all duration-200 cursor-pointer"
                     >
                       <div className="flex items-start gap-4">
@@ -353,53 +350,64 @@ export default function NurseDashboard() {
                           </div>
                         </div>
 
-                        {/* Enhanced Match Score */}
-                        <div className="flex flex-col items-center flex-shrink-0 gap-1">
-                          <div className="relative">
-                            <svg className="w-20 h-20 -rotate-90">
+                        {/* Match Score */}
+                        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                          <div
+                            className={`relative h-16 w-16 rounded-full flex items-center justify-center ${
+                              match.match_score >= 70
+                                ? "bg-emerald-50"
+                                : match.match_score >= 40
+                                ? "bg-amber-50"
+                                : "bg-muted"
+                            }`}
+                          >
+                            <svg className="absolute inset-0" viewBox="0 0 64 64">
                               <circle
-                                cx="40"
-                                cy="40"
-                                r="34"
+                                cx="32"
+                                cy="32"
+                                r="28"
                                 fill="none"
-                                stroke="currentColor"
-                                strokeWidth="6"
-                                className="text-muted/20"
+                                stroke="#e2e8f0"
+                                strokeWidth="3"
                               />
                               <circle
-                                cx="40"
-                                cy="40"
-                                r="34"
+                                cx="32"
+                                cy="32"
+                                r="28"
                                 fill="none"
-                                strokeWidth="6"
-                                strokeLinecap="round"
-                                strokeDasharray={`${(match.match_score / 100) * 213.6} 213.6`}
-                                className={
+                                stroke={
                                   match.match_score >= 70
-                                    ? "text-emerald-500"
+                                    ? "#16a34a"
                                     : match.match_score >= 40
-                                    ? "text-amber-500"
-                                    : "text-muted-foreground"
+                                    ? "#d97706"
+                                    : "#94a3b8"
                                 }
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeDasharray={`${(match.match_score / 100) * 175.9} 175.9`}
+                                transform="rotate(-90 32 32)"
                               />
                             </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <span
-                                className={`text-xl font-bold ${
-                                  match.match_score >= 70
-                                    ? "text-emerald-600"
-                                    : match.match_score >= 40
-                                    ? "text-amber-600"
-                                    : "text-muted-foreground"
-                                }`}
-                              >
-                                {match.match_score}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                                match
-                              </span>
-                            </div>
+                            <span
+                              className={`text-lg font-bold ${
+                                match.match_score >= 70
+                                  ? "text-emerald-600"
+                                  : match.match_score >= 40
+                                  ? "text-amber-600"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              {match.match_score}%
+                            </span>
                           </div>
+                          <span className="text-xs text-muted-foreground">
+                            Match Score
+                          </span>
+                          {match.experience_match && (
+                            <Badge variant="secondary" className="text-xs">
+                              Exp. Match
+                            </Badge>
+                          )}
                         </div>
                       </div>
 
@@ -408,6 +416,7 @@ export default function NurseDashboard() {
                         <ChevronRight className="h-6 w-6 text-primary" />
                       </div>
                     </div>
+                    </Link>
                   ))}
                 </div>
               )}
@@ -419,8 +428,8 @@ export default function NurseDashboard() {
         <div className="space-y-4">
           {/* Quick Actions */}
           <Card className="section-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
                 <div className="section-icon">
                   <Sparkles />
                 </div>
@@ -474,8 +483,8 @@ export default function NurseDashboard() {
 
           {/* Enhanced Profile Summary */}
           <Card className="section-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
                 <div className="section-icon-orange">
                   <Award />
                 </div>

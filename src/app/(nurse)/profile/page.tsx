@@ -7,18 +7,15 @@ import Image from "next/image";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import {
   Upload,
-  Save,
   FileText,
   User,
   Briefcase,
@@ -28,7 +25,6 @@ import {
   Mail,
   MapPin,
   Phone,
-  Calendar,
   Sparkles,
   FileCheck,
   Edit2,
@@ -37,23 +33,25 @@ import {
   Trash2,
   Activity,
   MoreVertical,
+  Eye,
+  Download,
 } from "lucide-react";
 import type { NurseFullProfile, NurseExperience, NurseEducation, NurseSkill, NurseCertification } from "@/types";
 import ExperienceModal from "@/components/profile/modals/ExperienceModal";
 import EducationModal from "@/components/profile/modals/EducationModal";
 import SkillsModal from "@/components/profile/modals/SkillsModal";
 import CertificationsModal from "@/components/profile/modals/CertificationsModal";
-import { profileUpdateSchema } from "@/lib/validators";
+import ProfileEditModal from "@/components/profile/modals/ProfileEditModal";
+import { formatNurseName } from "@/lib/utils";
 
 export default function ProfilePage() {
   const { data: session, update } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState<NurseFullProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingPicture, setUploadingPicture] = useState(false);
-  const [editMode, setEditMode] = useState(false);
+  const [profileEditModalOpen, setProfileEditModalOpen] = useState(false);
 
   // Experience modal
   const [experienceModalOpen, setExperienceModalOpen] = useState(false);
@@ -71,34 +69,12 @@ export default function ProfilePage() {
   const [certificationsModalOpen, setCertificationsModalOpen] = useState(false);
   const [editingCertification, setEditingCertification] = useState<NurseCertification | null>(null);
 
-  const [formData, setFormData] = useState({
-    first_name: "",
-    last_name: "",
-    phone: "",
-    address: "",
-    city: "",
-    country: "",
-    graduation_year: "",
-    bio: "",
-  });
-  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
-
   const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/nurses/me");
       if (res.ok) {
         const data = await res.json();
         setProfile(data);
-        setFormData({
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          phone: data.phone || "",
-          address: data.address || "",
-          city: data.city || "",
-          country: data.country || "",
-          graduation_year: data.graduation_year?.toString() || "",
-          bio: data.bio || "",
-        });
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -113,61 +89,43 @@ export default function ProfilePage() {
     }
   }, [session, fetchProfile]);
 
-  const handleSave = async () => {
+  const handleSaveProfile = async (data: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    address: string;
+    city: string;
+    country: string;
+    graduation_year: number | null;
+    bio: string;
+    professional_status: "registered_nurse" | "nursing_student" | null;
+  }) => {
     if (!profile) return;
-
-    const validation = profileUpdateSchema.safeParse({
-      ...formData,
-      graduation_year: formData.graduation_year
-        ? parseInt(formData.graduation_year)
-        : null,
+    const res = await fetch(`/api/nurses/${profile.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
-
-    if (!validation.success) {
-      const newErrors: Record<string, string> = {};
-      validation.error.issues.forEach((issue) => {
-        if (issue.path[0]) {
-          newErrors[issue.path[0] as string] = issue.message;
-        }
-      });
-      setFormErrors(newErrors);
-      toast.error("Please fix the errors before saving");
-      return;
-    }
-
-    setFormErrors({});
-    setSaving(true);
-
-    try {
-      const res = await fetch(`/api/nurses/${profile.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          graduation_year: formData.graduation_year
-            ? parseInt(formData.graduation_year)
-            : null,
-        }),
-      });
-
-      if (res.ok) {
-        toast.success("Profile updated successfully!");
-        setEditMode(false);
-        fetchProfile();
-      } else {
-        const data = await res.json();
-        toast.error(data.error || "Failed to update profile");
-      }
-    } catch {
-      toast.error("Something went wrong");
-    } finally {
-      setSaving(false);
+    if (res.ok) {
+      toast.success("Profile updated successfully!");
+      setProfileEditModalOpen(false);
+      fetchProfile();
+    } else {
+      const json = await res.json();
+      toast.error(json.error || "Failed to update profile");
     }
   };
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !profile) return;
+
+    if (profile.resumes && profile.resumes.length > 0) {
+      if (!confirm("This will replace your existing resume. Continue?")) {
+        e.target.value = "";
+        return;
+      }
+    }
 
     setUploading(true);
 
@@ -198,6 +156,35 @@ export default function ProfilePage() {
       toast.error("Upload failed");
     } finally {
       setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const getResumeUrl = async (resumeId: string) => {
+    const res = await fetch(`/api/resume/${resumeId}`);
+    if (!res.ok) throw new Error("Failed to get resume URL");
+    const data = await res.json();
+    return data as { url: string; filename: string };
+  };
+
+  const handleViewResume = async (resumeId: string) => {
+    try {
+      const { url } = await getResumeUrl(resumeId);
+      window.open(url, "_blank");
+    } catch {
+      toast.error("Could not open resume.");
+    }
+  };
+
+  const handleDownloadResume = async (resumeId: string, filename: string) => {
+    try {
+      const { url } = await getResumeUrl(resumeId);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+    } catch {
+      toast.error("Could not download resume.");
     }
   };
 
@@ -366,7 +353,8 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...data,
-          graduation_year: data.graduation_year ? parseInt(data.graduation_year) : null,
+          // Keep "Present" as string, API will handle conversion to null
+          graduation_year: data.graduation_year,
         }),
       });
       if (res.ok) {
@@ -634,14 +622,14 @@ export default function ProfilePage() {
           <div className="relative group flex-shrink-0">
             {profile.profile_picture_url ? (
               <div className="profile-picture relative" style={{ height: '12rem', width: '12rem' }}>
-                <Image
-                  src={profile.profile_picture_url}
-                  alt={`${profile.first_name} ${profile.last_name}`}
-                  fill
-                  sizes="192px"
-                  className="object-cover"
-                  priority
-                />
+                 <Image
+                   src={profile.profile_picture_url}
+                   alt={formatNurseName(profile.first_name, profile.last_name, profile.professional_status)}
+                   fill
+                   sizes="192px"
+                   className="object-cover"
+                   priority
+                 />
               </div>
             ) : (
               <div className="profile-picture flex items-center justify-center text-3xl sm:text-5xl font-bold text-sky-600" style={{ height: '12rem', width: '12rem' }}>
@@ -685,23 +673,16 @@ export default function ProfilePage() {
           {/* Profile Info - centered on mobile, left-aligned on desktop */}
           <div className="flex-1 flex items-center w-full">
             <div className="w-full">
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex justify-between items-start mb-3 group">
                 <div className="flex-1">
-                  <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 text-center sm:text-left">
-                    {profile.first_name} {profile.last_name}
-                  </h2>
+                 <h2 className="text-xl sm:text-3xl font-bold text-gray-800 mb-2 text-center sm:text-left">
+                   {formatNurseName(profile.first_name, profile.last_name, profile.professional_status)}
+                 </h2>
                   <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 text-xs sm:text-sm mb-3">
-                    {profile.address && (
+                    {(profile.city || profile.country) && (
                       <span className="text-gray-600 flex items-center gap-1.5">
                         <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-600" />
-                        <span className="hidden sm:inline">{profile.address}</span>
-                        <span className="sm:hidden truncate max-w-[150px]">{profile.address}</span>
-                      </span>
-                    )}
-                    {!profile.address && (profile.city || profile.country) && (
-                      <span className="text-sm text-gray-600 flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-sky-600" />
-                        <span>{profile.city}{profile.city && profile.country ? ', ' : ''}{profile.country}</span>
+                        <span>{profile.city}{profile.city && profile.country ? ", " : ""}{profile.country}</span>
                       </span>
                     )}
                     {profile.user?.email && (
@@ -718,115 +699,22 @@ export default function ProfilePage() {
                     )}
                   </div>
                 </div>
-                {editMode ? (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <>
-                        <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button variant="ghost" size="sm" onClick={() => setEditMode(true)}>
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="sm" onClick={() => setProfileEditModalOpen(true)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Edit2 className="h-4 w-4" />
+                </Button>
               </div>
               
-              {editMode ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">First Name</Label>
-                      <Input
-                        value={formData.first_name}
-                        onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Last Name</Label>
-                      <Input
-                        value={formData.last_name}
-                        onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Professional Summary</Label>
-                    <Textarea
-                      placeholder="Share your nursing experience, specialties, and professional goals..."
-                      value={formData.bio}
-                      onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                      rows={4}
-                      className="resize-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Phone</Label>
-                    <Input
-                      value={formData.phone}
-                      onChange={(e) => {
-                        setFormData({ ...formData, phone: e.target.value });
-                        if (formErrors.phone) {
-                          setFormErrors({ ...formErrors, phone: "" });
-                        }
-                      }}
-                      placeholder="+1 (555) 000-0000"
-                      className={formErrors.phone ? "border-red-500" : ""}
-                    />
-                    {formErrors.phone && (
-                      <p className="text-sm text-red-400">{formErrors.phone}</p>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">City</Label>
-                      <Input
-                        value={formData.city}
-                        onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Country</Label>
-                      <Input
-                        value={formData.country}
-                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">Address</Label>
-                    <Input
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Street address"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {profile.bio ? (
-                    <p className="text-sm leading-relaxed text-gray-700 line-clamp-3 sm:line-clamp-none">
-                      {profile.bio}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">
-                      No professional summary added yet. Click edit to add one.
-                    </p>
-                  )}
-                </div>
-              )}
+              <div>
+                {profile.bio ? (
+                  <p className="text-sm leading-relaxed text-gray-700 line-clamp-3 sm:line-clamp-none">
+                    {profile.bio}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No professional summary added yet. Click edit to add one.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -898,16 +786,21 @@ export default function ProfilePage() {
 
           {/* Experience Section */}
           <Card className="section-card">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon">
-                  <Briefcase />
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <Briefcase className="h-5 w-5 text-sky-600" />
                 </div>
-                Experience
+                <div>
+                  <span>Experience</span>
+                  <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                    {profile.years_of_experience ?? 0} years total experience
+                  </p>
+                </div>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {profile.experience && profile.experience.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearAllExperience} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button variant="ghost" size="sm" onClick={handleClearAllExperience} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -918,93 +811,58 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.experience && profile.experience.length > 0 ? (
-                <div>
-                  {profile.experience
-                    .sort((a, b) => {
-                      // Sort by start_date, latest first
-                      const dateA = new Date(a.start_date || '1900-01-01');
-                      const dateB = new Date(b.start_date || '1900-01-01');
-                      return dateB.getTime() - dateA.getTime();
-                    })
-                    .map((exp, index) => (
-                    <div key={exp.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
-                      {/* Icon */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <Building2 className="h-5 w-5 text-gray-500" />
+                <div className="space-y-0">
+                    {profile.experience
+                      .sort((a, b) => {
+                        const dateA = new Date(a.start_date || '1900-01-01');
+                        const dateB = new Date(b.start_date || '1900-01-01');
+                        return dateB.getTime() - dateA.getTime();
+                      })
+                      .map((exp, index) => (
+                      <div key={exp.id} className={`group flex items-start gap-3 py-4 ${index !== 0 ? "border-t border-border/50" : ""}`}>
+                        <div className="h-9 w-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Building2 className="h-4 w-4 text-sky-500" />
                         </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-gray-900 text-base mb-1">{exp.position}</h3>
-                        
-                        <div className="flex items-center gap-4 text-sm mb-3">
-                          <span className="text-gray-600 font-medium">{exp.employer}</span>
-                          {exp.location && (
-                            <div className="flex items-center gap-1.5">
-                              <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                              <span>{exp.location}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground">{exp.position}</p>
+                              <p className="text-sm text-sky-600 font-medium mt-0.5">{exp.employer}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {exp.department && exp.department}{exp.department && exp.location && " · "}{exp.location && exp.location}
+                              </p>
                             </div>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-col gap-2 mb-4 text-xs text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                            <span>
-                              {formatDate(exp.start_date)} to {exp.end_date ? formatDate(exp.end_date) : "Present"}
-                            </span>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Badge variant="outline" className="bg-sky-50 text-sky-600 border-sky-200 text-xs font-normal">
+                                {formatDate(exp.start_date)} – {exp.end_date ? formatDate(exp.end_date) : "Present"}
+                              </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger className="h-7 w-7 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity">
+                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
+                                    <Edit2 className="h-3.5 w-3.5 mr-2" />Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDeleteExperience(exp.id)} className="text-red-600 focus:text-red-600">
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
-                          {exp.department && (
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-3.5 w-3.5 text-gray-400" />
-                              <span>{exp.department}</span>
-                            </div>
+                          {exp.description && (
+                            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{exp.description}</p>
                           )}
                         </div>
-
-                        {exp.description && (
-                          <ul className="space-y-2 text-sm text-gray-700">
-                            {exp.description.split("\n").map((line, li) => (
-                              <li key={li} className="flex items-start gap-2">
-                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gray-300 flex-shrink-0" />
-                                <span>{line}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
                       </div>
-
-                      {/* Actions - Hidden by default, show on hover */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-100 flex items-center justify-center flex-shrink-0 transition-opacity">
-                          <MoreVertical className="h-4 w-4 text-gray-500" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
-                            <Edit2 className="h-3.5 w-3.5 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteExperience(exp.id)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                    <Briefcase className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700">No experience added</p>
-                  <p className="text-xs text-gray-500 mt-1">Upload your resume to auto-populate</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No experience added</p>
+                  <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
                 </div>
               )}
             </CardContent>
@@ -1012,16 +870,21 @@ export default function ProfilePage() {
 
           {/* Education Section */}
           <Card className="section-card mt-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon section-icon-purple">
-                  <GraduationCap />
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <GraduationCap className="h-5 w-5 text-sky-600" />
                 </div>
-                Education
+                <div>
+                  <span>Education</span>
+                  <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                    {profile.education?.length ?? 0} {profile.education?.length === 1 ? "record" : "records"}
+                  </p>
+                </div>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {profile.education && profile.education.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearAllEducation} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button variant="ghost" size="sm" onClick={handleClearAllEducation} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -1032,87 +895,57 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.education && profile.education.length > 0 ? (
-                <div>
-                  {profile.education.map((edu, index) => (
-                    <div key={edu.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
-                      {/* Icon */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-10 w-10 rounded-lg bg-gray-100 flex items-center justify-center">
-                          <GraduationCap className="h-5 w-5 text-gray-500" />
+                <div className="space-y-0">
+                    {profile.education
+                      .sort((a, b) => {
+                        const yearA = a.graduation_year || new Date(a.end_date || '1900-01-01').getFullYear();
+                        const yearB = b.graduation_year || new Date(b.end_date || '1900-01-01').getFullYear();
+                        return yearB - yearA;
+                      })
+                      .map((edu, index) => (
+                      <div key={edu.id} className={`group flex items-start gap-3 py-4 ${index !== 0 ? "border-t border-border/50" : ""}`}>
+                        <div className="h-9 w-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <GraduationCap className="h-4 w-4 text-sky-500" />
                         </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900 text-base">{edu.institution}</h3>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-foreground">{edu.institution}</p>
+                              <p className="text-sm text-sky-600 font-medium mt-0.5">{edu.degree}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {edu.field_of_study && edu.field_of_study}{edu.field_of_study && edu.institution_location && " · "}{edu.institution_location && edu.institution_location}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Badge variant="outline" className="bg-sky-50 text-sky-600 border-sky-200 text-xs font-normal">
+                                {(edu.start_date || edu.end_date) ? (
+                                  <>{edu.start_date && new Date(edu.start_date).getFullYear()}{edu.start_date && '–'}{edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}</>
+                                ) : edu.graduation_year ? `Grad. ${edu.graduation_year}` : 'Present'}
+                              </Badge>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger className="h-7 w-7 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity">
+                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleOpenEducationModal(edu)}>
+                                    <Edit2 className="h-3.5 w-3.5 mr-2" />Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDeleteEducation(edu.id)} className="text-red-600 focus:text-red-600">
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
-                          {edu.status && (
-                            <span className="inline-flex items-center rounded-full bg-gray-200 px-2.5 py-0.5 text-xs font-medium text-gray-700 ml-2 flex-shrink-0">
-                              {edu.status}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <p className="text-sm text-gray-600 mb-1">{edu.degree}</p>
-                        
-                        {edu.institution_location && (
-                          <p className="text-xs text-gray-600 flex items-center gap-1.5 mb-3">
-                            <MapPin className="h-3.5 w-3.5 text-gray-400" />
-                            <span>{edu.institution_location}</span>
-                          </p>
-                        )}
-
-                        {edu.field_of_study && (
-                          <p className="text-xs text-gray-600 mb-2">{edu.field_of_study}</p>
-                        )}
-
-                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                          <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                          <span>
-                            {(edu.start_date || edu.end_date) ? (
-                              <>
-                                {edu.start_date && new Date(edu.start_date).getFullYear()}
-                                {edu.start_date && ' to '}
-                                {edu.end_date ? new Date(edu.end_date).getFullYear() : 'Present'}
-                              </>
-                            ) : edu.graduation_year ? (
-                              `Graduated ${edu.graduation_year}`
-                            ) : null}
-                          </span>
                         </div>
                       </div>
-
-                      {/* Actions - Hidden by default, show on hover */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="h-8 w-8 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-gray-100 flex items-center justify-center flex-shrink-0 transition-opacity">
-                          <MoreVertical className="h-4 w-4 text-gray-500" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenEducationModal(edu)}>
-                            <Edit2 className="h-3.5 w-3.5 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteEducation(edu.id)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                    <GraduationCap className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-sm font-medium text-gray-700">No education added</p>
-                  <p className="text-xs text-gray-500 mt-1">Upload your resume to auto-populate</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <GraduationCap className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No education added</p>
+                  <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
                 </div>
               )}
             </CardContent>
@@ -1120,16 +953,21 @@ export default function ProfilePage() {
 
           {/* Skills Section */}
           <Card className="section-card mt-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-              <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon">
-                  <Sparkles className="h-5 w-5 text-gray-500" />
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-lg">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <Sparkles className="h-5 w-5 text-sky-500" />
                 </div>
-                Skills
+                <div>
+                  <span>Skills</span>
+                  <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                    {profile.skills?.length ?? 0} {profile.skills?.length === 1 ? "skill" : "skills"} listed
+                  </p>
+                </div>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {profile.skills && profile.skills.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearAllSkills} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button variant="ghost" size="sm" onClick={handleClearAllSkills} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -1156,7 +994,7 @@ export default function ProfilePage() {
                         className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white shadow flex items-center justify-center hover:bg-gray-100 opacity-0 group-hover:opacity-100 transition-opacity"
                         aria-label="Delete skill"
                       >
-                        <svg className="h-3 w-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="h-3 w-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
@@ -1164,12 +1002,10 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12">
-                  <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                    <Sparkles className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm font-medium">No skills added</p>
-                  <p className="text-xs text-muted-foreground mt-1">Upload your resume to auto-populate</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No skills added</p>
+                  <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
                 </div>
               )}
             </CardContent>
@@ -1179,13 +1015,13 @@ export default function ProfilePage() {
         {/* Right Column - Sidebar */}
         <div className="space-y-6">
           {/* Profile Strength */}
-          <Card className="section-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon section-icon-green">
-                  <Activity />
+          <Card className="section-card overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40">
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-sky-600" />
                 </div>
-                Profile Strength
+                <span>Profile Strength</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1243,16 +1079,21 @@ export default function ProfilePage() {
 
           {/* Certifications */}
           <Card className="section-card mt-6">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon section-icon-orange">
-                  <Award />
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <Award className="h-5 w-5 text-sky-600" />
                 </div>
-                Certifications
+                <div>
+                  <span>Certifications</span>
+                  <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                    {profile.certifications?.length ?? 0} total
+                  </p>
+                </div>
               </CardTitle>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                 {profile.certifications && profile.certifications.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearAllCertifications} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                  <Button variant="ghost" size="sm" onClick={handleClearAllCertifications} className="text-red-500 hover:text-red-600 hover:bg-red-50">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 )}
@@ -1263,43 +1104,32 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="p-6">
               {profile.certifications && profile.certifications.length > 0 ? (
-                <div>
+                <div className="space-y-4">
                   {profile.certifications.map((cert, index) => (
-                    <div key={cert.id} className={`group flex items-start gap-4 ${index !== 0 ? "border-t pt-6 mt-6" : ""}`}>
-                      {/* Icon */}
-                      <div className="flex-shrink-0 mt-1">
-                        <div className="h-10 w-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                          <Award className="h-5 w-5 text-amber-600" />
+                    <div key={cert.id} className={`group flex items-start justify-between gap-2 ${index !== 0 ? "border-t border-border/50 pt-4" : ""}`}>
+                      <div className="flex items-start gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Award className="h-4 w-4 text-sky-500" />
                         </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold text-amber-900 text-base mb-1">{cert.cert_type}</h3>
-                        
-                        <div className="flex flex-col gap-2 text-sm text-gray-600">
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{cert.cert_type}</p>
                           {cert.verified && (
-                            <div className="flex items-center gap-1.5">
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                              <span className="text-green-600 font-medium">Verified</span>
-                            </div>
+                            <p className="text-xs text-green-600 font-medium flex items-center gap-1 mt-0.5">
+                              <CheckCircle className="h-3 w-3" />Verified
+                            </p>
                           )}
                         </div>
                       </div>
-
-                      {/* Actions - Hidden by default, show on hover */}
                       <DropdownMenu>
+                        <DropdownMenuTrigger className="h-7 w-7 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity">
+                          <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handleOpenCertificationsModal(cert)}>
-                            <Edit2 className="h-3.5 w-3.5 mr-2" />
-                            Edit
+                            <Edit2 className="h-3.5 w-3.5 mr-2" />Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteCertification(cert.id)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Delete
+                          <DropdownMenuItem onClick={() => handleDeleteCertification(cert.id)} className="text-red-600 focus:text-red-600">
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -1307,22 +1137,22 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Award className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-xs text-muted-foreground">No certifications yet</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Award className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No certifications yet</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Resume Upload */}
-          <Card className="section-card">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold flex items-center gap-2 text-gray-800">
-                <div className="section-icon">
-                  <FileText />
+          <Card className="section-card overflow-hidden">
+            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40">
+              <CardTitle className="flex items-center gap-3 text-base">
+                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-sky-600" />
                 </div>
-                Resume
+                <span>Resume</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6">
@@ -1356,7 +1186,7 @@ export default function ProfilePage() {
                     {profile.resumes.map((resume) => (
                       <div
                         key={resume.id}
-                        className="flex items-center gap-2 p-2 rounded bg-muted text-sm"
+                        className="flex items-center gap-2 p-2 rounded bg-muted text-sm group"
                       >
                         <FileCheck className="h-4 w-4 text-success flex-shrink-0" />
                         <div className="flex-1 min-w-0">
@@ -1367,9 +1197,25 @@ export default function ProfilePage() {
                             {new Date(resume.uploaded_at).toLocaleDateString()}
                           </p>
                         </div>
+                        {resume.file_type === "pdf" && (
+                          <button
+                            onClick={() => handleViewResume(resume.id)}
+                            className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                            title="View resume"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownloadResume(resume.id, resume.original_filename)}
+                          className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100"
+                          title="Download resume"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                        </button>
                         <button
                           onClick={() => handleDeleteResume(resume.id)}
-                          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
                           title="Delete resume"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -1415,6 +1261,14 @@ export default function ProfilePage() {
         onOpenChange={setCertificationsModalOpen}
         certification={editingCertification}
         onSave={handleSaveCertification}
+      />
+
+      {/* Profile Edit Modal */}
+      <ProfileEditModal
+        open={profileEditModalOpen}
+        onOpenChange={setProfileEditModalOpen}
+        profile={profile}
+        onSave={handleSaveProfile}
       />
 
       <div className="h-8" />

@@ -144,27 +144,25 @@ function UserMenu({
           </div>
           
           {/* Menu Items */}
-          {!isAdmin && (
-            <>
-              <Link
-                href="/profile"
-                onClick={() => setUserMenuOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <User className="h-4 w-4" />
-                My Profile
-              </Link>
-              <Link
-                href="/settings"
-                onClick={() => setUserMenuOpen(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <Settings className="h-4 w-4" />
-                Settings
-              </Link>
-            </>
-          )}
-          
+          <>
+            <Link
+              href="/profile"
+              onClick={() => setUserMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <User className="h-4 w-4" />
+              {isAdmin ? "Profile" : "My Profile"}
+            </Link>
+            <Link
+              href="/settings"
+              onClick={() => setUserMenuOpen(false)}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Link>
+          </>
+
           {/* Sign Out */}
           <button
             onClick={() => signOut({ callbackUrl: "/" })}
@@ -259,26 +257,24 @@ function MobileNav({
               </div>
               
               {/* Menu Items */}
-              {!isAdmin && (
-                <>
-                  <Link
-                    href="/profile"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <User className="h-4 w-4" />
-                    My Profile
-                  </Link>
-                  <Link
-                    href="/settings"
-                    onClick={() => setUserMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
-                </>
-              )}
+              <>
+                <Link
+                  href="/profile"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <User className="h-4 w-4" />
+                  {isAdmin ? "Profile" : "My Profile"}
+                </Link>
+                <Link
+                  href="/settings"
+                  onClick={() => setUserMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+              </>
               
               {/* Sign Out */}
               <button

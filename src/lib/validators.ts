@@ -149,11 +149,15 @@ export const educationItemSchema = z.object({
   institution: z.string().min(1, "Institution name is required"),
   degree: z.string().min(1, "Degree is required"),
   field_of_study: z.string().optional().default(""),
-  graduation_year: z.string().min(1, "Graduation year is required")
+  graduation_year: z.string()
     .refine((val) => {
+      // Allow "Present" or empty string (optional)
+      if (val === "" || val.toLowerCase() === "present") {
+        return true;
+      }
       const year = parseInt(val);
       return !isNaN(year) && year >= 1900 && year <= new Date().getFullYear() + 10;
-    }, "Graduation year must be a valid year"),
+    }, "Graduation year must be a valid year or 'Present'"),
 });
 
 export const skillItemSchema = z.object({
@@ -200,6 +204,7 @@ export const profileUpdateSchema = z.object({
   country: z.string().optional(),
   graduation_year: z.coerce.number().nullable().optional(),
   bio: z.string().optional(),
+  professional_status: z.enum(["registered_nurse", "nursing_student"]).nullable().optional(),
 });
 
 export const changePasswordSchema = z.object({

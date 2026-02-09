@@ -37,7 +37,7 @@ export async function PUT(
         institution: body.institution,
         degree: body.degree,
         field_of_study: body.field_of_study || null,
-        graduation_year: body.graduation_year || null,
+        graduation_year: body.graduation_year === "Present" || body.graduation_year === "" ? null : (body.graduation_year || null),
       })
       .eq("id", id)
       .eq("nurse_id", nurseId)

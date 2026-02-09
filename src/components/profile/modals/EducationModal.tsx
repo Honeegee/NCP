@@ -146,10 +146,9 @@ export default function EducationModal({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="graduation_year">Graduation Year</Label>
+            <Label htmlFor="graduation_year">Graduation Year (or &quot;Present&quot;)</Label>
             <Input
               id="graduation_year"
-              type="number"
               value={form.graduation_year}
               onChange={(e) => {
                 setForm({ ...form, graduation_year: e.target.value });
@@ -157,7 +156,7 @@ export default function EducationModal({
                   setErrors({ ...errors, graduation_year: "" });
                 }
               }}
-              placeholder="2020"
+              placeholder="2020 or Present"
               className={errors.graduation_year ? "border-red-500" : ""}
             />
             {errors.graduation_year && (

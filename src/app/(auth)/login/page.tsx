@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,7 +32,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const callbackUrl = searchParams.get("callbackUrl");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -60,7 +60,10 @@ function LoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
+    const session = await getSession();
+    const role = (session?.user as { role?: string })?.role;
+    const destination = callbackUrl || (role === "admin" ? "/admin" : "/dashboard");
+    router.push(destination);
     router.refresh();
   };
 
@@ -88,6 +91,7 @@ function LoginForm() {
                     type="email"
                     placeholder="nurse@example.com"
                     className="h-11"
+                    autoComplete="email"
                     {...register("email")}
                   />
                   {errors.email && (
@@ -109,6 +113,7 @@ function LoginForm() {
                     type="password"
                     placeholder="Enter your password"
                     className="h-11"
+                    autoComplete="current-password"
                     {...register("password")}
                   />
                   {errors.password && (
