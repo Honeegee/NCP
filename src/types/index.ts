@@ -179,6 +179,17 @@ export interface RegistrationData {
   consent_agreed: boolean;
 }
 
+export type ApplicationStatus = "pending" | "reviewed" | "accepted" | "rejected";
+
+export interface JobApplication {
+  id: string;
+  nurse_user_id: string;
+  job_id: string;
+  status: ApplicationStatus;
+  applied_at: string;
+  updated_at: string;
+}
+
 export interface NurseFullProfile extends NurseProfile {
   experience: NurseExperience[];
   certifications: NurseCertification[];

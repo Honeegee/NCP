@@ -17,9 +17,11 @@ import {
   Briefcase,
   CalendarDays,
   Target,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
-import type { Job, JobMatch } from "@/types";
+import type { Job, JobMatch, JobApplication } from "@/types";
+import { toast } from "sonner";
 
 export default function JobDetailPage() {
   const { data: session } = useSession();
@@ -28,13 +30,16 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [match, setMatch] = useState<JobMatch | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isApplied, setIsApplied] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [jobRes, matchRes] = await Promise.all([
+        const [jobRes, matchRes, appsRes] = await Promise.all([
           fetch(`/api/jobs/${params.id}`),
           fetch("/api/jobs/match"),
+          fetch("/api/jobs/applications"),
         ]);
 
         if (jobRes.ok) {
@@ -49,6 +54,14 @@ export default function JobDetailPage() {
           );
           setMatch(found || null);
         }
+
+        if (appsRes.ok) {
+          const appsData = await appsRes.json();
+          const applied = (appsData.applications || []).some(
+            (a: JobApplication) => a.job_id === params.id
+          );
+          setIsApplied(applied);
+        }
       } catch (error) {
         console.error("Error fetching job:", error);
       } finally {
@@ -60,6 +73,30 @@ export default function JobDetailPage() {
       fetchData();
     }
   }, [session, params.id]);
+
+  async function handleApply() {
+    if (!params.id || isApplied) return;
+    setApplyLoading(true);
+    try {
+      const res = await fetch(`/api/jobs/${params.id}/apply`, { method: "POST" });
+      if (res.ok) {
+        setIsApplied(true);
+        toast.success("Application submitted successfully!");
+      } else {
+        const data = await res.json();
+        if (res.status === 409) {
+          setIsApplied(true);
+          toast.info("You've already applied to this job");
+        } else {
+          toast.error(data.error || "Failed to apply");
+        }
+      }
+    } catch {
+      toast.error("Something went wrong");
+    } finally {
+      setApplyLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -208,6 +245,38 @@ export default function JobDetailPage() {
                   </Badge>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Apply Button */}
+          <div className="mt-4 flex items-center gap-3">
+            <Button
+              onClick={handleApply}
+              disabled={isApplied || applyLoading}
+              className={isApplied ? "bg-emerald-600 hover:bg-emerald-600" : ""}
+              size="lg"
+            >
+              {applyLoading ? (
+                <>
+                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                  Applying...
+                </>
+              ) : isApplied ? (
+                <>
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Applied
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-1" />
+                  Apply Now
+                </>
+              )}
+            </Button>
+            {isApplied && (
+              <span className="text-xs text-muted-foreground">
+                You&apos;ve already applied to this position
+              </span>
             )}
           </div>
         </CardContent>

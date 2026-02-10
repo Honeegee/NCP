@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@novu/node": "^2.6.6",
+    "@novu/notification-center": "^2.0.0",
     "@radix-ui/react-popover": "^1.1.15",
     "@supabase/supabase-js": "^2.94.1",
     "bcryptjs": "^3.0.3",

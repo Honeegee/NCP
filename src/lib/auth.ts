@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { createServerSupabase } from "./supabase";
+import { novu } from "./novu";
 import {
   checkAccountLockout,
   recordFailedLogin,
@@ -80,6 +81,25 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = (user as { role: "nurse" | "admin" }).role;
+
+        // Identify subscriber in Novu on login (idempotent)
+        try {
+          await novu.subscribers.identify(user.id, {
+            email: user.email!,
+            firstName: (user as { firstName?: string }).firstName || user.name?.split(" ")[0],
+            lastName: (user as { lastName?: string }).lastName || user.name?.split(" ").slice(1).join(" "),
+            avatar: user.image || undefined,
+          });
+
+          // Subscribe nurses to the "nurses" topic for bulk notifications
+          if ((user as { role: string }).role === "nurse") {
+            await novu.topics.addSubscribers("nurses", {
+              subscribers: [user.id],
+            });
+          }
+        } catch (err) {
+          console.error("Novu subscriber identify failed:", err);
+        }
       }
 
       // Fetch nurse profile for nurses (on every JWT update to keep name and picture current)

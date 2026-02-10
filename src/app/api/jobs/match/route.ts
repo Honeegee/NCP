@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
+import { novu } from "@/lib/novu";
 import { matchJobs } from "@/lib/job-matcher";
 import type { NurseFullProfile, Job } from "@/types";
 
@@ -61,6 +62,23 @@ export async function GET() {
       profile as NurseFullProfile,
       jobs as Job[]
     );
+
+    // Notify nurse for top match if score >= 70
+    if (matches.length > 0 && matches[0].match_score >= 70) {
+      try {
+        await novu.trigger("job-match-found", {
+          to: { subscriberId: session.user.id },
+          payload: {
+            score: matches[0].match_score,
+            jobTitle: matches[0].job.title,
+            facility: matches[0].job.facility_name,
+            jobId: matches[0].job.id,
+          },
+        });
+      } catch (err) {
+        console.error("Novu job-match-found trigger failed:", err);
+      }
+    }
 
     return NextResponse.json({ matches });
   } catch (error) {

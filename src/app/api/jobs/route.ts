@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
+import { novu } from "@/lib/novu";
+import { TriggerRecipientsTypeEnum } from "@novu/node";
 import { jobSchema } from "@/lib/validators";
 import type { Job } from "@/types";
 
@@ -92,6 +94,21 @@ export async function POST(request: NextRequest) {
         { error: "Failed to create job" },
         { status: 500 }
       );
+    }
+
+    // Notify all nurses via Novu topic
+    try {
+      await novu.trigger("new-job-posted", {
+        to: [{ type: TriggerRecipientsTypeEnum.TOPIC, topicKey: "nurses" }],
+        payload: {
+          jobTitle: job.title,
+          facility: job.facility_name,
+          location: job.location,
+          jobId: job.id,
+        },
+      });
+    } catch (err) {
+      console.error("Novu new-job-posted trigger failed:", err);
     }
 
     return NextResponse.json({ job: job as Job }, { status: 201 });

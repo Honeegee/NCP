@@ -8,7 +8,6 @@ import {
   LogOut,
   Users,
   Settings,
-  Bell,
   Stethoscope,
   ClipboardCheck,
   Hospital,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { NovuNotificationBell } from "@/components/shared/NotificationBell";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { LucideIcon } from "lucide-react";
 import { Session } from "next-auth";
@@ -415,10 +415,7 @@ export function Navbar() {
             <NavLinks links={links} pathname={pathname} />
             
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="relative text-white hover:bg-white/10 rounded-xl h-10 w-10 transition-all hover:scale-105">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-400 animate-pulse border border-white" />
-              </Button>
+              <NovuNotificationBell />
               <div className="hidden md:block">
                 <UserMenu 
                   session={session}
