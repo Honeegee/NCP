@@ -35,7 +35,10 @@ import {
   MoreVertical,
   Eye,
   Download,
+  Stethoscope,
+  HeartHandshake,
 } from "lucide-react";
+import type { ExperienceType } from "@/types";
 import type { NurseFullProfile, NurseExperience, NurseEducation, NurseSkill, NurseCertification } from "@/types";
 import ExperienceModal from "@/components/profile/modals/ExperienceModal";
 import EducationModal from "@/components/profile/modals/EducationModal";
@@ -281,6 +284,7 @@ export default function ProfilePage() {
   const handleSaveExperience = async (data: {
     employer: string;
     position: string;
+    type: ExperienceType;
     department: string;
     start_date: string;
     end_date: string;
@@ -590,6 +594,8 @@ export default function ProfilePage() {
   const formatDate = (dateStr: string) => {
     const d = new Date(dateStr + "T00:00:00");
     if (isNaN(d.getTime())) return dateStr;
+    // Hide ugly "Jan 1900" fallback dates
+    if (d.getFullYear() < 1950) return "";
     return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
   };
 
@@ -784,89 +790,207 @@ export default function ProfilePage() {
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-6">
 
-          {/* Experience Section */}
-          <Card className="section-card">
-            <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
-              <CardTitle className="flex items-center gap-3 text-lg">
-                <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
-                  <Briefcase className="h-5 w-5 text-sky-600" />
-                </div>
-                <div>
-                  <span>Experience</span>
-                  <p className="text-sm font-normal text-muted-foreground mt-0.5">
-                    {profile.years_of_experience ?? 0} years total experience
-                  </p>
-                </div>
-              </CardTitle>
-              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                {profile.experience && profile.experience.length > 0 && (
-                  <Button variant="ghost" size="sm" onClick={handleClearAllExperience} className="text-red-500 hover:text-red-600 hover:bg-red-50">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-                <Button variant="ghost" size="sm" onClick={() => handleOpenExperienceModal()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
-              {profile.experience && profile.experience.length > 0 ? (
-                <div className="space-y-0">
-                    {profile.experience
-                      .sort((a, b) => {
-                        const dateA = new Date(a.start_date || '1900-01-01');
-                        const dateB = new Date(b.start_date || '1900-01-01');
-                        return dateB.getTime() - dateA.getTime();
-                      })
-                      .map((exp, index) => (
-                      <div key={exp.id} className={`group flex items-start gap-3 py-4 ${index !== 0 ? "border-t border-border/50" : ""}`}>
-                        <div className="h-9 w-9 rounded-lg bg-sky-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Building2 className="h-4 w-4 text-sky-500" />
+          {/* Experience Sections (grouped by type) */}
+          {(() => {
+            const experienceSections: {
+              type: ExperienceType;
+              label: string;
+              icon: React.ReactNode;
+              iconBg: string;
+              iconColor: string;
+              badgeBg: string;
+              badgeText: string;
+              badgeBorder: string;
+              headerGradient: string;
+              emptyIcon: React.ReactNode;
+            }[] = [
+              {
+                type: "employment",
+                label: "Work Experience",
+                icon: <Briefcase className="h-5 w-5 text-sky-600" />,
+                iconBg: "bg-sky-100",
+                iconColor: "bg-sky-50",
+                badgeBg: "bg-sky-50",
+                badgeText: "text-sky-600",
+                badgeBorder: "border-sky-200",
+                headerGradient: "from-sky-50/60 to-blue-50/30 border-sky-100/40",
+                emptyIcon: <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />,
+              },
+              {
+                type: "clinical_placement",
+                label: "Clinical Placements",
+                icon: <Stethoscope className="h-5 w-5 text-emerald-600" />,
+                iconBg: "bg-emerald-100",
+                iconColor: "bg-emerald-50",
+                badgeBg: "bg-emerald-50",
+                badgeText: "text-emerald-600",
+                badgeBorder: "border-emerald-200",
+                headerGradient: "from-emerald-50/60 to-green-50/30 border-emerald-100/40",
+                emptyIcon: <Stethoscope className="h-8 w-8 mx-auto mb-2 opacity-30" />,
+              },
+              {
+                type: "ojt",
+                label: "OJT / Training",
+                icon: <Activity className="h-5 w-5 text-amber-600" />,
+                iconBg: "bg-amber-100",
+                iconColor: "bg-amber-50",
+                badgeBg: "bg-amber-50",
+                badgeText: "text-amber-600",
+                badgeBorder: "border-amber-200",
+                headerGradient: "from-amber-50/60 to-yellow-50/30 border-amber-100/40",
+                emptyIcon: <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />,
+              },
+              {
+                type: "volunteer",
+                label: "Volunteering",
+                icon: <HeartHandshake className="h-5 w-5 text-rose-600" />,
+                iconBg: "bg-rose-100",
+                iconColor: "bg-rose-50",
+                badgeBg: "bg-rose-50",
+                badgeText: "text-rose-600",
+                badgeBorder: "border-rose-200",
+                headerGradient: "from-rose-50/60 to-pink-50/30 border-rose-100/40",
+                emptyIcon: <HeartHandshake className="h-8 w-8 mx-auto mb-2 opacity-30" />,
+              },
+            ];
+
+            const allExperience = profile.experience || [];
+            const hasAnyExperience = allExperience.length > 0;
+
+            // If no experience at all, show a single empty card
+            if (!hasAnyExperience) {
+              return (
+                <Card className="section-card">
+                  <CardHeader className="bg-gradient-to-r from-sky-50/60 to-blue-50/30 border-b border-sky-100/40 flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden">
+                    <CardTitle className="flex items-center gap-3 text-lg">
+                      <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+                        <Briefcase className="h-5 w-5 text-sky-600" />
+                      </div>
+                      <div>
+                        <span>Experience</span>
+                        <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                          {profile.years_of_experience ?? 0} years total experience
+                        </p>
+                      </div>
+                    </CardTitle>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="sm" onClick={() => handleOpenExperienceModal()}>
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No experience added</p>
+                      <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+
+            // Show sections that have entries (+ always show Work Experience)
+            return experienceSections
+              .filter((section) => section.type === "employment" || allExperience.some((e) => (e.type || "employment") === section.type))
+              .map((section) => {
+                const sectionExperience = allExperience
+                  .filter((e) => (e.type || "employment") === section.type)
+                  .sort((a, b) => {
+                    const dateA = new Date(a.start_date || "1900-01-01");
+                    const dateB = new Date(b.start_date || "1900-01-01");
+                    return dateB.getTime() - dateA.getTime();
+                  });
+
+                return (
+                  <Card key={section.type} className="section-card">
+                    <CardHeader className={`bg-gradient-to-r ${section.headerGradient} border-b flex flex-row items-center justify-between space-y-0 group rounded-t-lg overflow-hidden`}>
+                      <CardTitle className="flex items-center gap-3 text-lg">
+                        <div className={`h-9 w-9 rounded-xl ${section.iconBg} flex items-center justify-center`}>
+                          {section.icon}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-foreground">{exp.position}</p>
-                              <p className="text-sm text-sky-600 font-medium mt-0.5">{exp.employer}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
-                                {exp.department && exp.department}{exp.department && exp.location && " · "}{exp.location && exp.location}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Badge variant="outline" className="bg-sky-50 text-sky-600 border-sky-200 text-xs font-normal">
-                                {formatDate(exp.start_date)} – {exp.end_date ? formatDate(exp.end_date) : "Present"}
-                              </Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger className="h-7 w-7 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity">
-                                  <MoreVertical className="h-4 w-4 text-muted-foreground" />
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
-                                    <Edit2 className="h-3.5 w-3.5 mr-2" />Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleDeleteExperience(exp.id)} className="text-red-600 focus:text-red-600">
-                                    <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </div>
-                          {exp.description && (
-                            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{exp.description}</p>
+                        <div>
+                          <span>{section.label}</span>
+                          {section.type === "employment" && (
+                            <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                              {profile.years_of_experience ?? 0} years total experience
+                            </p>
+                          )}
+                          {section.type !== "employment" && (
+                            <p className="text-sm font-normal text-muted-foreground mt-0.5">
+                              {sectionExperience.length} {sectionExperience.length === 1 ? "record" : "records"}
+                            </p>
                           )}
                         </div>
+                      </CardTitle>
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {sectionExperience.length > 0 && (
+                          <Button variant="ghost" size="sm" onClick={handleClearAllExperience} className="text-red-500 hover:text-red-600 hover:bg-red-50">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenExperienceModal()}>
+                          <Plus className="h-4 w-4" />
+                        </Button>
                       </div>
-                    ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Briefcase className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No experience added</p>
-                  <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      {sectionExperience.length > 0 ? (
+                        <div className="space-y-0">
+                          {sectionExperience.map((exp, index) => (
+                            <div key={exp.id} className={`group flex items-start gap-3 py-4 ${index !== 0 ? "border-t border-border/50" : ""}`}>
+                              <div className={`h-9 w-9 rounded-lg ${section.iconColor} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                                <Building2 className={`h-4 w-4 ${section.badgeText}`} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-semibold text-foreground">{exp.position}</p>
+                                    <p className={`text-sm ${section.badgeText} font-medium mt-0.5`}>{exp.employer}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                      {exp.department && exp.department}{exp.department && exp.location && " · "}{exp.location && exp.location}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {(formatDate(exp.start_date) || (exp.end_date && formatDate(exp.end_date))) && (
+                                    <Badge variant="outline" className={`${section.badgeBg} ${section.badgeText} ${section.badgeBorder} text-xs font-normal`}>
+                                      {formatDate(exp.start_date)}{formatDate(exp.start_date) && " – "}{exp.end_date ? formatDate(exp.end_date) : "Present"}
+                                    </Badge>
+                                    )}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger className="h-7 w-7 p-0 rounded-md opacity-0 group-hover:opacity-100 hover:bg-muted flex items-center justify-center transition-opacity">
+                                        <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleOpenExperienceModal(exp)}>
+                                          <Edit2 className="h-3.5 w-3.5 mr-2" />Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDeleteExperience(exp.id)} className="text-red-600 focus:text-red-600">
+                                          <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </div>
+                                {exp.description && (
+                                  <p className="text-sm text-muted-foreground mt-2 leading-relaxed whitespace-pre-line">{exp.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                          {section.emptyIcon}
+                          <p className="text-sm">No {section.label.toLowerCase()} added</p>
+                          <p className="text-xs opacity-70 mt-0.5">Upload your resume to auto-populate</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              });
+          })()}
 
           {/* Education Section */}
           <Card className="section-card mt-6">

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
-import { novu } from "@/lib/novu";
+import { getNovu } from "@/lib/novu";
 import { TriggerRecipientsTypeEnum } from "@novu/node";
 import { jobSchema } from "@/lib/validators";
 import type { Job } from "@/types";
@@ -97,7 +97,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Notify all nurses via Novu topic
-    try {
+    const novu = getNovu();
+    if (novu) try {
       await novu.trigger("new-job-posted", {
         to: [{ type: TriggerRecipientsTypeEnum.TOPIC, topicKey: "nurses" }],
         payload: {

@@ -15,7 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { experienceItemSchema } from "@/lib/validators";
-import type { NurseExperience } from "@/types";
+import type { NurseExperience, ExperienceType } from "@/types";
 
 interface ExperienceModalProps {
   open: boolean;
@@ -24,6 +24,7 @@ interface ExperienceModalProps {
   onSave: (data: {
     employer: string;
     position: string;
+    type: ExperienceType;
     department: string;
     location: string;
     start_date: string;
@@ -41,6 +42,7 @@ export default function ExperienceModal({
   const [form, setForm] = useState({
     employer: "",
     position: "",
+    type: "employment" as ExperienceType,
     department: "",
     location: "",
     start_date: "",
@@ -55,6 +57,7 @@ export default function ExperienceModal({
       setForm({
         employer: experience.employer || "",
         position: experience.position || "",
+        type: experience.type || "employment",
         department: experience.department || "",
         location: experience.location || "",
         start_date: experience.start_date || "",
@@ -65,6 +68,7 @@ export default function ExperienceModal({
       setForm({
         employer: "",
         position: "",
+        type: "employment",
         department: "",
         location: "",
         start_date: "",
@@ -152,6 +156,20 @@ export default function ExperienceModal({
                 <p className="text-sm text-red-500">{errors.position}</p>
               )}
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="type">Type</Label>
+            <select
+              id="type"
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value as ExperienceType })}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="employment">Work Experience</option>
+              <option value="clinical_placement">Clinical Placement</option>
+              <option value="ojt">OJT / Training</option>
+              <option value="volunteer">Volunteering</option>
+            </select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="department">Department (Optional)</Label>

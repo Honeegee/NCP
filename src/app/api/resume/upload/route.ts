@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
 import { extractTextFromPDF, extractTextFromDocx, extractTextFromDoc } from "@/lib/resume-parser";
-import { extractResumeData } from "@/lib/data-extractor";
+import { extractResumeDataHybrid } from "@/lib/data-extractor";
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     // Extract structured data from text
     let parsedData = null;
     if (extractedText) {
-      parsedData = extractResumeData(extractedText);
+      parsedData = await extractResumeDataHybrid(extractedText);
     }
 
     // Delete existing resumes (replace old with new)
@@ -122,35 +122,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-populate profile fields from parsed data
+    // Parse and insert structured data (experience, education, skills, certifications only)
     if (parsedData) {
       // Always clear and re-insert structured data (experience, skills, etc.)
       await supabase.from("nurse_certifications").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_skills").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_experience").delete().eq("nurse_id", nurseProfileId);
       await supabase.from("nurse_education").delete().eq("nurse_id", nurseProfileId);
-
-      // Fetch current profile to avoid overwriting manually-entered data
-      const { data: currentProfile } = await supabase
-        .from("nurse_profiles")
-        .select("bio, graduation_year, years_of_experience, address")
-        .eq("id", nurseProfileId)
-        .single();
-
-      // Only fill fields that are currently empty (resume = quick-fill, forms = source of truth)
-      const profileUpdates: Record<string, unknown> = {};
-      if (!currentProfile?.bio && parsedData.summary) profileUpdates.bio = parsedData.summary;
-      if (!currentProfile?.graduation_year && parsedData.graduation_year) profileUpdates.graduation_year = parsedData.graduation_year;
-      if (!currentProfile?.years_of_experience && parsedData.years_of_experience) profileUpdates.years_of_experience = parsedData.years_of_experience;
-      if (!currentProfile?.address && parsedData.address) profileUpdates.address = parsedData.address;
-
-      if (Object.keys(profileUpdates).length > 0) {
-        profileUpdates.updated_at = new Date().toISOString();
-        await supabase
-          .from("nurse_profiles")
-          .update(profileUpdates)
-          .eq("id", nurseProfileId);
-      }
 
       // Insert extracted certifications
       if (parsedData.certifications && parsedData.certifications.length > 0) {
@@ -175,21 +153,26 @@ export async function POST(request: NextRequest) {
 
       // Insert extracted experience
       if (parsedData.experience && parsedData.experience.length > 0) {
+        const validTypes = ["employment", "clinical_placement", "ojt", "volunteer"];
+        const looksLikeSentence = (text: string) =>
+          text.split(/\s+/).length > 8 ||
+          (/\b(that|which|are|was|were|has|had|have|been|being|is)\b/i.test(text) && text.split(/\s+/).length > 5) ||
+          /[.!]$/.test(text.trim());
         const expRecords = parsedData.experience
-          .filter((e) => e.start_date)
+          .filter((e) => e.employer && e.position && !looksLikeSentence(e.employer))
           .map((e) => ({
             nurse_id: nurseProfileId,
-            employer: e.employer || "Unknown",
-            position: e.position || "Nurse",
+            employer: e.employer,
+            position: e.position,
+            type: validTypes.includes(e.type || "") ? e.type : "employment",
             department: e.department || null,
             description: e.description || null,
             location: e.location || null,
-            start_date: toDateString(e.start_date!),
+            start_date: toDateString(e.start_date || "") || "1900-01-01",
             end_date: !e.end_date || /present|current/i.test(e.end_date)
               ? null
               : toDateString(e.end_date),
-          }))
-          .filter((e) => e.start_date); // drop records where date conversion failed
+          }));
         if (expRecords.length > 0) {
           await supabase.from("nurse_experience").insert(expRecords);
         }
@@ -199,17 +182,26 @@ export async function POST(request: NextRequest) {
       if (parsedData.education && parsedData.education.length > 0) {
         const eduRecords = parsedData.education
           .filter((e) => e.degree || e.institution)
-          .map((e) => ({
-            nurse_id: nurseProfileId,
-            institution: e.institution || "Unknown",
-            degree: e.degree || "Bachelor of Science in Nursing",
-            field_of_study: e.field_of_study || null,
-            graduation_year: e.year || null,
-            institution_location: e.institution_location || null,
-            start_date: e.start_date ? toDateString(e.start_date) : null,
-            end_date: e.end_date ? toDateString(e.end_date) : null,
-            status: e.status || null,
-          }));
+          .map((e) => {
+            // Ensure graduation_year is a valid integer or null
+            let gradYear: number | null = null;
+            if (e.year && typeof e.year === "number") {
+              gradYear = e.year;
+            } else if (e.year && /^\d{4}$/.test(String(e.year))) {
+              gradYear = parseInt(String(e.year), 10);
+            }
+            return {
+              nurse_id: nurseProfileId,
+              institution: e.institution || "Unknown",
+              degree: e.degree || "Bachelor of Science in Nursing",
+              field_of_study: e.field_of_study || null,
+              graduation_year: gradYear,
+              institution_location: e.institution_location || null,
+              start_date: e.start_date ? toDateString(e.start_date) : null,
+              end_date: e.end_date ? toDateString(e.end_date) : null,
+              status: e.status || null,
+            };
+          });
         if (eduRecords.length > 0) {
           await supabase.from("nurse_education").insert(eduRecords);
         }

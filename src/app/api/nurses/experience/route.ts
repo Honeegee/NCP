@@ -64,12 +64,14 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
+    const validTypes = ["employment", "clinical_placement", "ojt", "volunteer"];
     const { data, error } = await supabase
       .from("nurse_experience")
       .insert({
         nurse_id: profile.id,
         employer: body.employer || "Unknown",
         position: body.position || "Nurse",
+        type: validTypes.includes(body.type) ? body.type : "employment",
         department: body.department || null,
         location: body.location || null,
         description: body.description || null,

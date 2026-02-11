@@ -31,11 +31,14 @@ export interface NurseProfile {
   internship_experience: string | null;
 }
 
+export type ExperienceType = "employment" | "clinical_placement" | "ojt" | "volunteer";
+
 export interface NurseExperience {
   id: string;
   nurse_id: string;
   employer: string;
   position: string;
+  type: ExperienceType;
   department: string | null;
   start_date: string;
   end_date: string | null;
@@ -111,6 +114,7 @@ export interface ParsedResumeData {
   experience?: {
     employer?: string;
     position?: string;
+    type?: string;
     start_date?: string;
     end_date?: string;
     department?: string;

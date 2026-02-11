@@ -10,6 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@novu/node": "^2.6.6",
     "@novu/notification-center": "^2.0.0",

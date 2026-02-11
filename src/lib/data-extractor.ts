@@ -1,4 +1,5 @@
 import type { ParsedResumeData } from "@/types";
+import { scoreParseConfidence, extractResumeDataAI } from "./ai-resume-parser";
 
 // Feature scoring system for resume extraction
 interface ScoredCandidate {
@@ -62,6 +63,12 @@ function scoreEmployerCandidate(text: string, context: {
   if (text.match(/^[\w\s]+,\s+[\w\s]+$/)) score -= 30; // Likely location
   if (text.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Technician|Supervisor)/i)) score -= 25; // Likely position
   if (context.length < 3 || context.length > 150) score -= 20;
+
+  // Penalize sentence-like text (descriptions, not employer names)
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount > 8) score -= 40; // Too many words for an employer name
+  if (/\b(that|which|with|from|this|the|are|was|were|has|had|have|been|being|is)\b/i.test(text) && wordCount > 5) score -= 50;
+  if (/[.!]$/.test(text.trim())) score -= 30; // Ends with period/exclamation — likely a sentence
 
   return score;
 }
@@ -157,7 +164,7 @@ export function extractResumeData(text: string): ParsedResumeData {
 function extractSummary(text: string): string | undefined {
   // Look for various summary section headers
   const headerPattern =
-    /(?:PROFESSIONAL\s+SUMMARY|CAREER\s+SUMMARY|EXECUTIVE\s+SUMMARY|SUMMARY|CAREER\s+OBJECTIVE|OBJECTIVE|ABOUT\s+ME|PROFILE|PERSONAL\s+STATEMENT|OVERVIEW)[\s:]*/i;
+    /(?:PROFESSIONAL\s+SUMMARY|CAREER\s+SUMMARY|EXECUTIVE\s+SUMMARY|SUMMARY|CAREER\s+OBJECTIVES?|OBJECTIVES?|ABOUT\s+ME|PROFILE|PERSONAL\s+STATEMENT|OVERVIEW)[\s:]*/i;
   const headerMatch = headerPattern.exec(text);
 
   if (!headerMatch) return undefined;
@@ -165,8 +172,8 @@ function extractSummary(text: string): string | undefined {
   // Get text after the header
   const afterHeader = text.substring(headerMatch.index + headerMatch[0].length);
 
-  // Find the next ALL-CAPS section header (line consisting only of uppercase letters, spaces, &)
-  const nextSectionMatch = afterHeader.match(/\n([A-Z][A-Z\s&]{3,})\n/);
+  // Find the next ALL-CAPS section header (may end with colon, e.g., "PERSONAL BACKGROUND:")
+  const nextSectionMatch = afterHeader.match(/\n([A-Z][A-Z\s&]{3,}):?\s*\n/);
   const sectionText = nextSectionMatch
     ? afterHeader.substring(0, nextSectionMatch.index)
     : afterHeader.substring(0, 600); // Increased from 500 to capture more
@@ -305,7 +312,7 @@ function extractHospitals(text: string): string[] {
   // Also try to find "Hospital" or "Medical Center" mentions not in the list
   // Match proper nouns (capitalized words) followed by Hospital/Medical Center etc.
   const hospitalPattern =
-    /(?:[A-Z][a-z]+(?:\s+(?:of|de|ng|and|&)\s+)?(?:[A-Z][a-z.']+\s*)*(?:Hospital|Medical Center|Health Center|Medical Centre))/g;
+    /(?:[A-Z][a-z]+(?:[^\S\n]+(?:of|de|ng|and|&)[^\S\n]+)?(?:[A-Z][a-z.']+[^\S\n]*)*(?:Hospital|Medical Center|Health Center|Medical Centre))/g;
   const matches = text.match(hospitalPattern);
   if (matches) {
     for (const match of matches) {
@@ -429,31 +436,46 @@ function extractExperience(
 ): { employer?: string; position?: string; start_date?: string; end_date?: string; department?: string; description?: string; location?: string }[] {
   const experiences: { employer?: string; position?: string; start_date?: string; end_date?: string; department?: string; description?: string; location?: string }[] = [];
 
-  // First, identify and exclude the EDUCATION section from experience parsing
-  // Find where EDUCATION starts and where it ends (next major section)
-  const educationStartMatch = text.match(/\n(EDUCATION|ACADEMIC BACKGROUND|EDUCATIONAL BACKGROUND)[\s:]*\n/i);
+  // Identify and exclude non-experience sections from experience parsing
+  // These sections often contain date ranges that would be falsely matched as work experience
+  const sectionsToExclude = [
+    /\n(EDUCATION|ACADEMIC BACKGROUND|EDUCATIONAL BACKGROUND|EDUCATIONAL ATTAINMENT)[\s:]*\n/i,
+    /\n(HONORS[,\s]*AWARDS?[,\s&]*SCHOLARSHIPS?|AWARDS?\s+AND\s+HONORS?|HONORS?\s+AND\s+AWARDS?|HONORS?\s*,\s*AWARDS?)[\s:]*\n/i,
+    /\n(SEMINARS?\s+AND\s+TRAININGS?\s+ATTENDED|SEMINARS?\s+AND\s+TRAININGS?|TRAININGS?\s+AND\s+SEMINARS?|SEMINARS?\s+ATTENDED|TRAININGS?\s+ATTENDED)[\s:]*\n/i,
+    /\n(CLINICAL\s+INTERNSHIP|INTERNSHIPS?|CLINICAL\s+ROTATIONS?|RELATED\s+LEARNING\s+EXPERIENCE)[\s:]*\n/i,
+    /\n(PERSONAL\s+INFORMATION|PERSONAL\s+BACKGROUND|PERSONAL\s+DATA)[\s:]*\n/i,
+    /\n(CHARACTER\s+REFERENCES?|REFERENCES?)[\s:]*\n/i,
+    /\n(QUALIFICATIONS?\s+AND\s+MEMBERSHIP|MEMBERSHIPS?|AFFILIATIONS?|PROFESSIONAL\s+MEMBERSHIPS?)[\s:]*\n/i,
+  ];
+
   let experienceText = text;
 
-  if (educationStartMatch) {
-    const educationStart = educationStartMatch.index || 0;
-    const afterEducation = text.substring(educationStart);
+  for (const sectionPattern of sectionsToExclude) {
+    const sectionMatch = experienceText.match(sectionPattern);
+    if (sectionMatch && sectionMatch.index !== undefined) {
+      const sectionStart = sectionMatch.index;
+      const afterSection = experienceText.substring(sectionStart + sectionMatch[0].length);
 
-    // Find the next major section header (all caps, at least 10 chars)
-    const nextSectionMatch = afterEducation.substring(educationStartMatch[0].length).match(/\n([A-Z][A-Z\s&]{9,})\n/);
+      // Find the next major section header (all caps, at least 8 chars)
+      const nextSectionMatch = afterSection.match(/\n([A-Z][A-Z\s&,]{7,})\n/);
 
-    if (nextSectionMatch && nextSectionMatch.index !== undefined) {
-      const educationEnd = educationStart + educationStartMatch[0].length + nextSectionMatch.index;
-      // Remove the education section
-      experienceText = text.substring(0, educationStart) + '\n\n' + text.substring(educationEnd);
+      if (nextSectionMatch && nextSectionMatch.index !== undefined) {
+        const sectionEnd = sectionStart + sectionMatch[0].length + nextSectionMatch.index;
+        experienceText = experienceText.substring(0, sectionStart) + '\n\n' + experienceText.substring(sectionEnd);
+      } else {
+        // No next section — remove from this section to end of text
+        experienceText = experienceText.substring(0, sectionStart);
+      }
     }
   }
 
   // Pattern: Date range on a line - handles both "Month Year - Month Year" and "Year - Year"
-  // Updated to handle both formats:
+  // Updated to handle:
   // 1. Month Year - Month Year (e.g., "March 2023 - October 2023")
   // 2. Year - Year (e.g., "2016 - 2018")
+  // 3. Abbreviated months with periods and day numbers (e.g., "Sept. 1, 2010 to Feb. 7, 2011")
   const dateRangePattern =
-    /(?:(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*)?(\d{4}))\s*[-–—to]+\s*(?:((?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*)?(\d{4})|Present|Current)/gi;
+    /(?:(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*(?:\d{1,2}\s*[,.]?\s*)?)?(\d{4}))\s*(?:[-–—]+|\bto\b)\s*(?:(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*(?:\d{1,2}\s*[,.]?\s*)?)?(\d{4})|Present|Current)/gi;
 
   const lines = experienceText.split("\n");
 
@@ -461,7 +483,19 @@ function extractExperience(
     const line = lines[i];
     const dateMatch = dateRangePattern.exec(line);
     if (dateMatch) {
+      // Skip academic calendar patterns (e.g., "1st Semester 2004-2005")
+      if (line.match(/\b(?:1st|2nd|3rd|4th)\s+Semester\b/i)) continue;
+      // Skip lines that look like seminar/training entries (date followed by quoted text)
+      if (line.match(/^\w+\s+\d{1,2}[,-]\s*\d{1,2},?\s+\d{4}\s+".+"/)) continue;
+
       const entry: { employer?: string; position?: string; start_date?: string; end_date?: string; description?: string; location?: string } = {};
+
+      // Check if there's text after the date on the same line (e.g., "July 2009 – Jan 2010 Quezon City General Hospital")
+      const textAfterDate = line.substring(dateMatch.index + dateMatch[0].length).trim();
+      if (textAfterDate.length > 3 && textAfterDate.length < 100) {
+        // Text after date is likely the employer
+        entry.employer = textAfterDate;
+      }
 
       // Parse start date
       if (dateMatch[1] && dateMatch[2]) {
@@ -507,12 +541,12 @@ function extractExperience(
           extractedLocation = parts[1] || '';
         }
 
-        // Skip obvious locations
-        if (textToScore.match(/^[\w\s]+,\s+[\w\s]+(?:,\s+[\w\s]+)?$/)) continue;
+        const hasPositionKeywords = textToScore.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin|Sorting|Control|Treatment|Process|Testing|Trainee|Intern|Volunteer|Instructor|Duty)/i) !== null;
+
+        // Skip obvious locations — but NOT if the line has position keywords (e.g., "Private Duty nurse, Part time job")
+        if (!hasPositionKeywords && textToScore.match(/^[\w\s]+,\s+[\w\s]+(?:,\s+[\w\s]+)?$/)) continue;
         // Skip person names
         if (textToScore.match(/^(?:Mr\.|Mrs\.|Ms\.|Dr\.)\s+[\w\s]+$/) && textToScore.split(/\s+/).length <= 4) continue;
-
-        const hasPositionKeywords = textToScore.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin|Sorting|Control|Treatment|Process|Testing)/i) !== null;
 
         const score = scorePositionCandidate(textToScore, {
           isBeforeDate: true,
@@ -534,11 +568,52 @@ function extractExperience(
         }
       }
 
-      // Pick the highest scoring position
+      // Pick the highest scoring position from before-date candidates
       if (positionCandidates.length > 0) {
         positionCandidates.sort((a, b) => b.score - a.score);
         if (positionCandidates[0].score > 0) {
           entry.position = positionCandidates[0].text;
+        }
+      }
+
+      // Also score position candidates AFTER the date line and compare
+      const afterPositionCandidates: ScoredCandidate[] = [];
+      for (let j = i + 1; j < Math.min(lines.length, i + 5); j++) {
+        const candidateLine = lines[j].trim();
+        if (!candidateLine) continue;
+
+        // Stop at another date, section header, or bullet
+        if (dateRangePattern.test(candidateLine)) { dateRangePattern.lastIndex = 0; break; }
+        if (/^[A-Z][A-Z\s&]{3,}$/.test(candidateLine)) break;
+        dateRangePattern.lastIndex = 0;
+        if (/^[•\-\*▪●◦]/.test(candidateLine) || /^\d+[.)]\s/.test(candidateLine)) break;
+
+        // Skip location-like lines
+        if (candidateLine.match(/^[\w\s]+,\s+[\w\s]+(?:,\s+[\w\s]+)?$/)) continue;
+
+        const hasPositionKeywords = candidateLine.match(/(Manager|Director|Engineer|Developer|Analyst|Specialist|Coordinator|Assistant|Lead|Senior|Junior|Consultant|Officer|Administrator|Executive|Supervisor|Head|Chief|Technician|Translator|Owner|Crew|Nurse|RN|Staff|Clerk|Admin|Sorting|Control|Treatment|Process|Testing|Trainee|Intern|Volunteer|Instructor)/i) !== null;
+
+        if (!hasPositionKeywords) continue;
+
+        const score = scorePositionCandidate(candidateLine, {
+          isBeforeDate: false,
+          distanceFromDate: j - i,
+          hasPositionKeywords,
+          startsWithCapital: /^[A-Z][a-z]/.test(candidateLine),
+          length: candidateLine.length,
+        });
+
+        afterPositionCandidates.push({ text: candidateLine, score: score + 10, lineIndex: j });
+      }
+
+      // Compare best before-date vs best after-date candidates
+      if (afterPositionCandidates.length > 0) {
+        afterPositionCandidates.sort((a, b) => b.score - a.score);
+        const bestBefore = positionCandidates.length > 0 && positionCandidates[0].score > 0 ? positionCandidates[0] : null;
+        const bestAfter = afterPositionCandidates[0];
+
+        if (!bestBefore || bestAfter.score > bestBefore.score) {
+          entry.position = bestAfter.text;
         }
       }
 
@@ -720,8 +795,13 @@ function extractExperience(
           }
 
           // Otherwise, use as employer if it looks like a company/organization
-          if (possibleEmployer.match(/(?:Inc|LLC|Ltd|Corp|Corporation|Company|Co\.|Group|Technologies|Solutions|Services|Hospital|Medical|University|College|Institute|Agency|Organization|Foundation|Association|Department|Center|Foods)/i) ||
-              possibleEmployer.match(/^[A-Z][\w\s&,'.-]{2,}$/)) {
+          // Reject sentence-like text (descriptions masquerading as employers)
+          const looksLikeSentence = possibleEmployer.length > 50 ||
+            /\b(that|which|with|from|this|the|and|for|are|was|were|has|had|have|been|being|will|shall|may|can|could|would|should|must|is|am|not)\b/i.test(possibleEmployer) &&
+            possibleEmployer.split(/\s+/).length > 6;
+          if (!looksLikeSentence && (
+              possibleEmployer.match(/(?:Inc|LLC|Ltd|Corp|Corporation|Company|Co\.|Group|Technologies|Solutions|Services|Hospital|Medical|University|College|Institute|Agency|Organization|Foundation|Association|Department|Center|Foods)/i) ||
+              possibleEmployer.match(/^[A-Z][\w\s&,'.-]{2,}$/))) {
             entry.employer = possibleEmployer;
             break;
           }
@@ -817,7 +897,7 @@ function extractExperience(
       }
 
       if (bullets.length > 0) {
-        entry.description = bullets.join("\n");
+        entry.description = bullets.map(b => "• " + b).join("\n");
       }
 
       if (entry.start_date) {
@@ -839,7 +919,8 @@ function extractEducation(
 
   // First try to find the EDUCATION section manually
   let searchText = text;
-  const educationHeaderMatch = text.match(/\n(EDUCATION|ACADEMIC BACKGROUND|EDUCATIONAL BACKGROUND|ACADEMIC QUALIFICATIONS)[\s:]*\n/i);
+  // Put longer matches first so "EDUCATIONAL BACKGROUND" matches before "EDUCATION"
+  const educationHeaderMatch = text.match(/\n(EDUCATIONAL BACKGROUND|EDUCATIONAL ATTAINMENT|ACADEMIC BACKGROUND|ACADEMIC QUALIFICATIONS|EDUCATION)[\s:]*\n/i);
 
   if (educationHeaderMatch && educationHeaderMatch.index !== undefined) {
     const sectionStart = educationHeaderMatch.index + educationHeaderMatch[0].length;
@@ -858,7 +939,11 @@ function extractEducation(
       const upperCount = (line.match(/[A-Z]/g) || []).length;
       const upperCaseRatio = letters.length > 0 ? upperCount / letters.length : 0;
 
+      // Skip education sub-labels that look like section headers (e.g., "Graduate Studies: UNIVERSITY OF...")
+      if (line.match(/^(?:Graduate\s+Studies|Tertiary|Secondary|Elementary|College|Post[- ]?Graduate|Vocational|Primary)\s*:/i)) continue;
+
       if (line.length >= 10 &&
+          letters.length >= 5 &&   // At least 5 alphabetic chars (skip "SY (2004-2008)" etc.)
           upperCaseRatio > 0.7 &&  // At least 70% uppercase letters
           line.match(/^[A-Z]/) &&  // Starts with capital
           !line.match(/^\d/)) {     // Not starting with number
@@ -877,21 +962,22 @@ function extractEducation(
   // Common degree patterns - ordered from most specific to most general
   const degreePatterns = [
     // Specific full degree names first (greedy matching)
-    /Bachelor\s+of\s+Science\s+in\s+[\w\s]+/i,
-    /Bachelor\s+of\s+Arts\s+in\s+[\w\s]+/i,
-    /Master\s+of\s+Science\s+in\s+[\w\s]+/i,
-    /Master\s+of\s+Arts\s+in\s+[\w\s]+/i,
+    /\bBachelor\s+of\s+Science\s+in\s+[\w\s]+/i,
+    /\bBachelor\s+of\s+Arts\s+in\s+[\w\s]+/i,
+    /\bMaster\s+of\s+Science\s+in\s+[\w\s]+/i,
+    /\bMaster\s+of\s+Arts\s+in\s+[\w\s]+/i,
     // Nursing degrees
-    /(?:BSN|B\.?S\.?N\.?|Bachelor\s+of\s+Science\s+in\s+Nursing)/i,
+    /\b(?:BSN|B\.?S\.?N\.?|Bachelor\s+of\s+Science\s+in\s+Nursing)/i,
     // Technical degrees
-    /(?:Chemical|Mechanical|Electrical|Civil)\s+Engineering\s+Technology/i,
-    // More flexible patterns (use greedy matching, not non-greedy)
-    /(?:B\.?S\.?|B\.?A\.?|Bachelor(?:'s)?)\s+(?:of\s+)?(?:Science|Arts)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
-    /(?:M\.?S\.?|M\.?A\.?|MBA|Master(?:'s)?)\s+(?:of\s+)?(?:Science|Arts|Business Administration)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
+    /\b(?:Chemical|Mechanical|Electrical|Civil)\s+Engineering\s+Technology/i,
+    // More flexible patterns — require at least one period for 2-letter abbreviations
+    // to prevent false matches on common words like "as", "MS Office", etc.
+    /\b(?:B\.S\.?|B\.?S\.|B\.A\.?|B\.?A\.|Bachelor(?:'s)?)\s+(?:of\s+)?(?:Science|Arts)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
+    /\b(?:M\.S\.?|M\.?S\.|M\.A\.?|M\.?A\.|MBA|Master(?:'s)?)\s+(?:of\s+)?(?:Science|Arts|Business Administration)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
     // Doctorate degrees
-    /(?:Ph\.?D\.?|Doctorate|Doctor)\s+(?:of\s+)?(?:Philosophy)?\s*(?:in\s+)?([A-Z][\w\s&,]+)?/i,
-    // Associate degrees
-    /(?:A\.?S\.?|A\.?A\.?|Associate(?:'s)?)\s+(?:of\s+)?(?:Science|Arts)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
+    /\b(?:Ph\.?D\.?|Doctorate|Doctor)\s+(?:of\s+)?(?:Philosophy)?\s*(?:in\s+)?([A-Z][\w\s&,]+)?/i,
+    // Associate degrees — require at least one period for A.S./A.A. to avoid matching "as"
+    /\b(?:A\.S\.?|A\.?S\.|A\.A\.?|A\.?A\.|Associate(?:'s)?)\s+(?:of\s+)?(?:Science|Arts)?\s*(?:in\s+)?([A-Z][\w\s&,]+)/i,
   ];
 
   for (let i = 0; i < lines.length; i++) {
@@ -941,19 +1027,20 @@ function extractEducation(
         }
       }
 
-      // Look for institution - search AFTER degree first (most common), then before
-      // This prevents picking up institutions from previous education entries
+      // Look for institution - search BEFORE degree first (most formats have institution before degree)
+      // then fall back to searching after
 
-      // First, search 1-3 lines AFTER the degree
-      for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
+      // First, search 1-3 lines BEFORE the degree
+      for (let j = Math.max(0, i - 3); j < i; j++) {
         const candidateLine = lines[j];
 
         // Look for university/college/institute indicators
         if (candidateLine.match(/(?:University|College|Institute|School|Academy|Polytechnic)/i) &&
             candidateLine.length < 150 &&
             !candidateLine.match(/^[A-Z\s&]{4,}$/)) { // not a section header
-          // Clean up: remove trailing commas, city info, dates
+          // Clean up: remove education sub-labels, trailing commas, city info, dates
           entry.institution = candidateLine
+            .replace(/^(?:Graduate\s+Studies|Tertiary|Secondary|Elementary|College|Post[- ]?Graduate|Vocational|Primary)\s*:\s*/i, '')
             .replace(/,?\s*\d{4}\s*(?:-\s*\d{4})?/g, '') // remove years
             .replace(/,\s*(?:Manila|Quezon|Cebu|Davao|Philippines|USA|UK|Canada|Australia|Singapore).*$/i, '')
             .replace(/,\s*(?:CA|NY|TX|FL)\s*$/i, '') // US states
@@ -964,17 +1051,25 @@ function extractEducation(
         }
       }
 
-      // If not found after, search 1-2 lines BEFORE the degree
+      // If not found before, search 1-3 lines AFTER the degree
       if (!entry.institution) {
-        for (let j = Math.max(0, i - 2); j < i; j++) {
+        for (let j = i + 1; j < Math.min(lines.length, i + 4); j++) {
           const candidateLine = lines[j];
+
+          // Stop if we hit another degree (don't cross into the next education entry)
+          let isAnotherDegree = false;
+          for (const dp of degreePatterns) {
+            if (candidateLine.match(dp)) { isAnotherDegree = true; break; }
+          }
+          if (isAnotherDegree) break;
 
           // Look for university/college/institute indicators
           if (candidateLine.match(/(?:University|College|Institute|School|Academy|Polytechnic)/i) &&
               candidateLine.length < 150 &&
               !candidateLine.match(/^[A-Z\s&]{4,}$/)) { // not a section header
-            // Clean up: remove trailing commas, city info, dates
+            // Clean up: remove education sub-labels, trailing commas, city info, dates
             entry.institution = candidateLine
+              .replace(/^(?:Graduate\s+Studies|Tertiary|Secondary|Elementary|College|Post[- ]?Graduate|Vocational|Primary)\s*:\s*/i, '')
               .replace(/,?\s*\d{4}\s*(?:-\s*\d{4})?/g, '') // remove years
               .replace(/,\s*(?:Manila|Quezon|Cebu|Davao|Philippines|USA|UK|Canada|Australia|Singapore).*$/i, '')
               .replace(/,\s*(?:CA|NY|TX|FL)\s*$/i, '') // US states
@@ -1129,10 +1224,11 @@ function extractAddress(text: string): string | undefined {
     /^[\w._%+-]+@[\w.-]+\.[a-zA-Z]{2,}$/,  // Email addresses
     /^https?:\/\//i,  // URLs
     /^(?:PROFESSIONAL\s+SUMMARY|SUMMARY|OBJECTIVE|EXPERIENCE|EDUCATION|SKILLS|CERTIFICATIONS)/i,  // Section headers
+    /(?:Hospital|Medical Center|Medical Centre|Clinic|Doctors Hospital)/i,  // Not an address — institution names
   ];
 
-  // Look for address in the first 20 lines
-  for (let i = 0; i < Math.min(20, lines.length); i++) {
+  // Look for address in the first 10 lines (addresses are always in the header)
+  for (let i = 0; i < Math.min(10, lines.length); i++) {
     const line = lines[i];
 
     // Skip if matches skip patterns
@@ -1202,14 +1298,14 @@ function parseMonthYear(dateStr: string): Date | null {
     jun: 5, june: 5,
     jul: 6, july: 6,
     aug: 7, august: 7,
-    sep: 8, september: 8,
+    sep: 8, sept: 8, september: 8,
     oct: 9, october: 9,
     nov: 10, november: 10,
     dec: 11, december: 11,
   };
 
   const match = dateStr.match(
-    /(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*)?(\d{4})/i
+    /(?:(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s*\.?\s*)?(\d{4})/i
   );
 
   if (!match) return null;
@@ -1219,4 +1315,91 @@ function parseMonthYear(dateStr: string): Date | null {
   const month = monthStr ? (months[monthStr] ?? 0) : 0;
 
   return new Date(year, month, 1);
+}
+
+/**
+ * Hybrid resume parser: tries regex first (free/fast), falls back to Gemini AI
+ * when confidence is low (score < 40).
+ */
+/**
+ * Detect experience type from position/employer keywords.
+ * Applied as post-processing so both regex and AI results get categorized.
+ */
+function inferExperienceType(
+  exp: { employer?: string; position?: string; description?: string },
+  rawText?: string
+): string {
+  const pos = (exp.position || "").toLowerCase();
+  const emp = (exp.employer || "").toLowerCase();
+  const combined = `${pos} ${emp}`;
+
+  // Clinical placement detection
+  if (
+    /clinical placement|clinical rotation|practicum|preceptorship/i.test(combined) ||
+    // Check if the raw text has a "Clinical Placements" section containing this employer
+    (rawText && /clinical placement/i.test(rawText) &&
+      rawText.toLowerCase().indexOf("clinical placement") <
+        rawText.toLowerCase().indexOf(exp.employer || "~~~"))
+  ) {
+    return "clinical_placement";
+  }
+
+  // OJT / Training detection
+  if (/\bojt\b|on.the.job|internship|intern\b|trainee|training/i.test(combined)) {
+    return "ojt";
+  }
+
+  // Volunteer detection
+  if (/volunteer|volunteering|community service|pro.bono|mentor/i.test(combined)) {
+    return "volunteer";
+  }
+
+  return "employment";
+}
+
+export async function extractResumeDataHybrid(
+  text: string
+): Promise<ParsedResumeData> {
+  // Step 1: Try regex parser (free, instant)
+  const regexResult = extractResumeData(text);
+  const confidence = scoreParseConfidence(regexResult, text);
+
+  console.log(`[Resume Parser] Regex confidence: ${confidence}/100`);
+
+  let result: ParsedResumeData;
+
+  // Step 2: If regex did a good job, use it
+  if (confidence >= 55) {
+    console.log("[Resume Parser] Using regex result (good confidence)");
+    result = regexResult;
+  } else {
+    // Step 3: Low confidence — try AI fallback
+    console.log("[Resume Parser] Low confidence, trying Gemini AI fallback...");
+    const aiResult = await extractResumeDataAI(text);
+
+    // If AI returned meaningful data, use it
+    const aiConfidence = scoreParseConfidence(aiResult);
+    if (aiConfidence > confidence) {
+      console.log(
+        `[Resume Parser] Using AI result (confidence: ${aiConfidence}/100)`
+      );
+      result = aiResult;
+    } else {
+      // AI didn't do better — return regex result anyway
+      console.log("[Resume Parser] AI not better, using regex result");
+      result = regexResult;
+    }
+  }
+
+  // Step 4: Post-process — infer experience types if not already set
+  if (result.experience) {
+    result.experience = result.experience.map((exp) => ({
+      ...exp,
+      type: exp.type && exp.type !== "employment"
+        ? exp.type
+        : inferExperienceType(exp, text),
+    }));
+  }
+
+  return result;
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { createServerSupabase } from "@/lib/supabase";
-import { novu } from "@/lib/novu";
+import { getNovu } from "@/lib/novu";
 import { matchJobs } from "@/lib/job-matcher";
 import type { NurseFullProfile, Job } from "@/types";
 
@@ -64,7 +64,8 @@ export async function GET() {
     );
 
     // Notify nurse for top match if score >= 70
-    if (matches.length > 0 && matches[0].match_score >= 70) {
+    const novu = getNovu();
+    if (novu && matches.length > 0 && matches[0].match_score >= 70) {
       try {
         await novu.trigger("job-match-found", {
           to: { subscriberId: session.user.id },

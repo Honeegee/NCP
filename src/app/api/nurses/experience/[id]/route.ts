@@ -71,11 +71,13 @@ export async function PUT(
 
     const body = await request.json();
 
+    const validTypes = ["employment", "clinical_placement", "ojt", "volunteer"];
     const { data, error } = await supabase
       .from("nurse_experience")
       .update({
         employer: body.employer,
         position: body.position,
+        type: validTypes.includes(body.type) ? body.type : "employment",
         department: body.department || null,
         location: body.location || null,
         description: body.description || null,
